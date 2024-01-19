@@ -1,0 +1,18 @@
+[project]
+name = "SBOM Redaction Package"
+version = "0.0.1"
+authors = [
+  { name="Eman Abu Ishgair", email="emanabuishqair@gmail.com" },
+]
+description = "Package to redact SBOM"
+readme = "README.md"
+requires-python = ">="
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: ",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = ""
+Issues = ""
