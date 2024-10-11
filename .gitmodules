@@ -1,0 +1,6 @@
+[submodule "sbom_data/bom-shelter"]
+	path = sbom_data/bom-shelter
+	url = https://github.com/chainguard-dev/bom-shelter
+[submodule "sbom_data/guac-data"]
+	path = sbom_data/guac-data
+	url = https://github.com/guacsec/guac-data
