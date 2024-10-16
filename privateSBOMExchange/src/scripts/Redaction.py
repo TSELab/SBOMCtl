@@ -30,21 +30,7 @@ def prove(tree,SBOMField):
         assert proof.sanity_check()
         assert verify_proof(proof,tree.root, item, SBOMField[item] )
 
-def dict_generator(indict, pre=None):
-    pre = pre[:] if pre else []
-    if isinstance(indict, dict):
-        for key, value in indict.items():
-            if isinstance(value, dict):
-                for d in dict_generator(value, pre + [key]):
-                    yield d
-            elif isinstance(value, list) or isinstance(value, tuple):
-                for v in value:
-                    for d in dict_generator(v, pre + [key]):
-                        yield d
-            else:
-                yield pre + [key, value]
-    else:
-        yield pre + [indict]
+
 def flatten_data(y):
     out = {}
 
@@ -62,32 +48,6 @@ def flatten_data(y):
 
     flatten(y)
     return out
-def parse_json(data,result,new_key):
-
-    for key, value in data.items():
-        if isinstance(value, dict):
-            #result[key] = parse_json(value,result)
-            parse_json(value,result,key)
-
-        else:
-            result[new_key+key] = value
-            
-        if isinstance(value, list):
-            #print(new_key+key)
-            #print(key,"list")
-            for key in value:
-                if isinstance(value, dict):
-                    #result[key] = parse_json(value,result)
-                    parse_json(value,result,key)
-                else:
-                    result[new_key+key] = value
-                
-
-                
-
-    #print (result)
-    new_key=""
-    return result
 
 #represent SBOM in file as Merkle tree
 def SBOMAsTree(file_name):
