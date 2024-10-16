@@ -2,3 +2,7 @@
 **/.DS_Store
 # Ignore the venv Petra
 /Petra/
+**/flatten_sbom
+**/master_key
+**/pub_key
+**/*priv_key
