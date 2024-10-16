@@ -2,7 +2,7 @@ from __future__ import print_function
 import argparse
 #import pyopenabe
 from ctypes import *
-
+import os
 from lib4sbom.parser import SBOMParser
 from smt.tree import SparseMerkleTree
 from smt.utils import DEFAULTVALUE, PLACEHOLDER
@@ -92,44 +92,22 @@ def parse_json(data,result,new_key):
 #represent SBOM in file as Merkle tree
 def SBOMAsTree(file_name):
     flatten_SBOM_data = Flatten_spdx(file_name)
-    
-    spdx_document = parse_file(file_name)
-    packages=spdx_document.packages
-    count=1
-    purls=[]
-    print("Number of Packages in {0} is {1}".format(file_name, len(spdx_document.packages)))
-    for package in packages:
-        if(package.download_location):
-            print(str(count)+": ",package.download_location)
-            purls.append(package.download_location)
+    tree = SparseMerkleTree()
+    count=0
+    # add each SBOM field to the tree
+    for field_name,SBOMField in flatten_SBOM_data.items():
         count+=1
-
-    #return tree
+        SBOMField={field_name:field_name}
+        addtoTree(tree,SBOMField)
+    return tree
 
 def Flatten_spdx(file_name):
     with open (file_name, 'r') as sbom_file:
         sbom_data = json.load(sbom_file)
         result = {}
         #parsed_data = parse_json(data,result,"")
-        sbom_data=flatten_data(sbom_data)
-
-        #print(parsed_data)
-        tree = SparseMerkleTree()
-    
-        #for item in parsed_data:
-        #    print (item , " ",parsed_data[item],"\n")
-        count=0
-        
-        #for each SBOM filed, add it to the tree
-        with open ("flatten_sbom",'wt') as f:
-            for field_name,SBOMField in sbom_data.items():
-                f.writelines(str(field_name)+": "+str(SBOMField)+"\n\n")
-                #print(str(field_name), str(SBOMField))
-                count+=1
-                #SBOMField={'Field Name':'Field Value'}
-                SBOMField={field_name:field_name}
-                addtoTree(tree,SBOMField)
-    return tree
+        flatten_sbom=flatten_data(sbom_data)
+    return flatten_sbom
 
 #setup CP-ABE algorithim
 def SetupCPABE():
@@ -209,17 +187,24 @@ def main():
     args = parser.parse_args()
 
     #test/data/SPDX/julia.spdx.json
-    SBOM_file_name=str(args.sbom)
-    SBOM_file_name="test/data/SPDX/julia.spdx.json"
+    #SBOM_file_name=str(args.sbom)
+ 
+    #  path of submodules data 
+    in_the_lab_spdx="sbom_data/bom-shelter/in-the-lab/spdx-popular-containers/data"
+    in_the_wild_cyclonedx="sbom_data/bom-shelter/in-the-wild/cyclonedx"
+    in_the_wild_spdx = 'sbom_data/bom-shelter/in-the-wild/spdx' 
+
+    SBOM_file_name="julia.spdx.json"
+    SBOM_file_path=in_the_wild_spdx+"/"+SBOM_file_name
 
     policy_file_name=args.policy
     #represent the SBOM in the SBOM_file_name as a Merkle Tree
-    tree=SBOMAsTree(SBOM_file_name)
+    tree=SBOMAsTree(SBOM_file_path)
     
-    cpabe_setup_file = "src/lib/cpabe-setup.so"
-    cpabe_keygen_file = "src/lib/cpabe-keygen.so"
-    cpabe_enc_file = "src/lib/cpabe-enc.so"
-    cpabe_dec_file = "src/lib/cpabe-dec.so"
+    cpabe_setup_file = "privateSBOMExchange/src/lib/cpabe-setup.so"
+    cpabe_keygen_file = "privateSBOMExchange/src/lib/cpabe-keygen.so"
+    cpabe_enc_file = "privateSBOMExchange/src/lib/cpabe-enc.so"
+    cpabe_dec_file = "privateSBOMExchange/src/lib/cpabe-dec.so"
 
 
     #testing CP-ABE setup algorithim
@@ -243,7 +228,6 @@ def main():
 
     args = make_args('3 pub_key flatten_sbom foo')
     print(*args)
-    import os
     print(os.getpid())
     #backup the file before deletion
     cpabe_encrypt_functions.main(len(args), args)
@@ -259,7 +243,7 @@ def main():
     cpabe_keygen_functions.main.restype = c_int
     cpabe_keygen_functions.main.argtypes = c_int,POINTER(c_char_p)
 
-    args = make_args('5 -o sara_priv_key pub_key master_key foo')
+    args = make_args('5 -o priv_key pub_key master_key foo')
     print(*args)
     cpabe_keygen_functions.main(len(args), args)
 
