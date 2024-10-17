@@ -1,7 +1,6 @@
 test/data/*
 virtualenv
 **/.DS_Store
-/Petra/
 #Ignore output files
 **/flatten_sbom
 **/master_key
