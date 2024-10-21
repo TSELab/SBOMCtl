@@ -18,6 +18,7 @@ from spdx_tools.spdx.writer.write_anything import write_file
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import rsa 
+from cryptography.hazmat.primitives.serialization import PublicFormat, Encoding
 from spdx_tools.spdx.model import Document
 from spdx_tools.spdx3.bump_from_spdx2 import spdx_document
 import os
@@ -85,29 +86,29 @@ def  GenerateSBOM (artifact) :
     #return SBOM
 
 def GetRole(key):
-    
-    
-    logging.debug("Inside GetRoles")
-    role=""
-    return role
+
+    if key in Users:
+        return Users[key]
+    return None
     
 def EnrollRoles (cert):
     logging.debug("Inside EnrollRoles")
     currentRole=""
-    public_key=cert.public_key() 
+    public_key=cert.public_key().public_bytes(Encoding.PEM, PublicFormat.SubjectPublicKeyInfo)
     #TODO verify the key 
+    #import pdb; pdb.set_trace()
     user = {
         "organizationName": cert.subject.get_attributes_for_oid(x509.OID_ORGANIZATION_NAME)[0].value,
         "commonName": cert.subject.get_attributes_for_oid(x509.OID_COMMON_NAME)[0].value,
         "key":public_key
             }
-    Users.add(user)
+    Users[user["key"]] = user
 
     #print(cert.public_key())
 
     currentRole=GetRole(public_key)
 
-    return currentRole
+    return currentRole["commonName"]
     
 def CalculateRoles (policy):
     logging.debug("Inside CalculateRoles")
