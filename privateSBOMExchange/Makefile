@@ -5,4 +5,7 @@ init:
 test:
 	py.test tests
 
+server:
+	bash runserver.sh
+
 .PHONY: init test
