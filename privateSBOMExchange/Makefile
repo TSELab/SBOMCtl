@@ -1,7 +1,8 @@
 init:
-    pip install -r requirements.txt
+	bash ./bootstrap.sh
+	@echo "run source virtualenv/bin/activate to run the other targets"
 
 test:
-    py.test tests
+	py.test tests
 
 .PHONY: init test

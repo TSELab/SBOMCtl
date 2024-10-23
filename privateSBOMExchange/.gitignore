@@ -1,0 +1,10 @@
+test/data/*
+virtualenv
+**/.DS_Store
+#Ignore output files
+**/flatten_sbom
+**/master_key
+**/pub_key
+**/*priv_key
+#Ignore database
+*.db
