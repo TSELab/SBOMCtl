@@ -7,44 +7,15 @@ from traceback import print_tb
 from unittest import result
 from typing import Union
 
-from smt.tree import TreeMapStore,TreeMemoryStore
+from smt.tree import TreeMapStore, TreeMemoryStore
 from smt.tree import SparseMerkleTree
 from smt.utils import DEFAULTVALUE, PLACEHOLDER
 from smt.proof import verify_proof
 
-from petra.lib.database import get_session, SBOM, SMTNode, SMTValue
+from petra.lib.database import (get_session, SBOM, SMTNode, SMTValue, 
+                                retrieve_sbom_as_tree_from_db, store_SBOM_as_tree_in_db)
 from petra.lib.sbom import flatten_SPDX
-
-
-def prove(tree, SBOMField):
-    for item in SBOMField:
-        proof = tree.prove(item)
-        assert proof.sanity_check()
-        assert verify_proof(proof,tree.root, item, SBOMField[item] )
-
-
-
-#represent SBOM in file as Merkle tree
-def SBOM_as_tree(flatten_SBOM_data,sbom_file_encoding):
-    tree = SparseMerkleTree(store=TreeMemoryStore())
-    tree_name=""
-    count=0
-    # add each SBOM field to the tree
-    for field_name,value in flatten_SBOM_data.items():
-        count+=1
-        SBOMField={field_name:value}
-        if field_name =="name":
-            tree_name=value
-        #print(SBOMField)
-        assert DEFAULTVALUE == tree.get(b"")
-        for item in SBOMField:
-            if isinstance(SBOMField[item], bool):
-                SBOMField[item]=str(SBOMField[item])
-            root1 = tree.update(item.encode(sbom_file_encoding), SBOMField[item].encode(sbom_file_encoding))
-            assert 32 == len(root1)
-            assert root1 != PLACEHOLDER
-        
-    return tree,tree_name
+from petra.lib.models import SBOM_as_tree, try_tree
 
 
      
@@ -53,70 +24,8 @@ def make_args(cmd):
     return (c_char_p * len(args))(*args)
 
 
-def try_tree():
-    t=SparseMerkleTree(store=TreeMemoryStore())
-    roota= t.update(b"a",b"a1")
-    assert 32 == len(roota)
-    assert roota !=PLACEHOLDER
-    assert t.update(b"b",b"b2")
-    assert DEFAULTVALUE == t.get(b"d")
-    assert b"b2"== t.get(b"b")
-    proof = t.prove(b"b")
-    assert verify_proof(proof, t.root, b"b", b"b2")
 
-    return t
-
-
-def store_SBOM_as_tree_in_db(tree_to_store, sbom_name):
   
-    added_sbom=add_or_get_to_db(SBOM,name=sbom_name,root_hash=tree_to_store.root_as_bytes())
-    session.flush()
-    id = added_sbom.id
-    for k,v in tree_to_store.store.nodes.items():
-        added_node=add_or_get_to_db(SMTNode,sbom_id=id,key=k,value=v)
-        session.flush()        
-    for k,v in tree_to_store.store.values.items():
-        added_value=add_or_get_to_db(SMTValue,sbom_id=id,key=k,value=v)
-        session.flush()        
-
-def add_or_get_to_db(table, **kwargs):
-    # Try to find the record
-    record = session.query(table).filter_by(**kwargs).first()
-    if record:
-        print(f"Record exists")
-        return record
-    else:
-        new_record=table(**kwargs)
-        # If it doesn't exist, create a new record
-        session.add(new_record)
-        session.commit()
-        print(f"Record added")
-        return new_record
-
-def retrieve_sbom_as_tree_from_db(sbom_name):
-    sbom = session.query(SBOM).filter_by(name=sbom_name).first()
-
-    nodes=dict()
-    values=dict()
-    if sbom:
-        print(sbom.id,sbom.name,sbom.root_hash)
-        root=sbom.root_hash
-    smt_nodes = session.query(SMTNode).filter_by(sbom_id=sbom.id)
-    smt_vals = session.query(SMTValue).filter_by(sbom_id=sbom.id)
-    for response in smt_nodes.all():
-        nodes[response.key]=response.value
-        print(response.sbom_id,response.key,response.value)
-    for response in smt_vals.all():
-        values[response.key]=response.value
-        print(response.sbom_id,response.key,response.value)
-    retrived_tree=SparseMerkleTree(store=TreeMemoryStore())
-    memorystore=TreeMemoryStore()
-    memorystore.nodes=nodes
-    memorystore.values=values
-    retrived_tree.store=memorystore
-    retrived_tree.root=root
-    return retrived_tree
-   
 def decrypt_SBOM_field(cpabe_dec_file,field_name,pub_key,priv_key):
     args = make_args(f"3 {pub_key} {priv_key} {field_name}.cpabe")
     print(*args)
@@ -239,8 +148,6 @@ def main():
     decrypt_SBOM_field(cpabe_dec_file,"dataLicense","pub_key","priv_key")
 
 
-session = get_session()
- 
 if __name__ == "__main__":
     main()
 
