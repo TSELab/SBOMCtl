@@ -5,7 +5,6 @@ from ctypes import *
 import os
 from traceback import print_tb
 from unittest import result
-from lib4sbom.parser import SBOMParser
 from typing import Union
 
 from smt.tree import TreeMapStore,TreeMemoryStore
@@ -13,40 +12,17 @@ from smt.tree import SparseMerkleTree
 from smt.utils import DEFAULTVALUE, PLACEHOLDER
 from smt.proof import verify_proof
 
-import json
-import pandas
-
-from spdx_tools.spdx.model import (Checksum, ChecksumAlgorithm, File, FileType, Relationship, RelationshipType)
-from spdx_tools.spdx.parser.parse_anything import parse_file
-from spdx_tools.spdx.validation.document_validator import validate_full_spdx_document
-from spdx_tools.spdx.writer.write_anything import write_file
-
 from petra.lib.database import get_session, SBOM, SMTNode, SMTValue
+from petra.lib.sbom import flatten_SPDX
 
 
-def prove(tree,SBOMField):
+def prove(tree, SBOMField):
     for item in SBOMField:
         proof = tree.prove(item)
         assert proof.sanity_check()
         assert verify_proof(proof,tree.root, item, SBOMField[item] )
 
 
-def flatten_data(y):
-    out = {}
-    def flatten(x, name=''):
-        if type(x) is dict:
-            for a in x:
-                flatten(x[a], name + a + '_')
-        elif type(x) is list:
-            i = 0
-            for a in x:
-                flatten(a, name + str(i) + '_')
-                i += 1
-        else:
-            out[name[:-1]] = x
-
-    flatten(y)
-    return out
 
 #represent SBOM in file as Merkle tree
 def SBOM_as_tree(flatten_SBOM_data,sbom_file_encoding):
@@ -69,15 +45,6 @@ def SBOM_as_tree(flatten_SBOM_data,sbom_file_encoding):
             assert root1 != PLACEHOLDER
         
     return tree,tree_name
-
-def flatten_SPDX(file_name):
-    with open (file_name, 'r') as sbom_file:
-        sbom_file_encoding=sbom_file.encoding
-        sbom_data = json.load(sbom_file)
-        result = {}
-        #parsed_data = parse_json(data,result,"")
-        flatten_sbom=flatten_data(sbom_data)
-    return flatten_sbom ,sbom_file_encoding
 
 
      
