@@ -9,14 +9,13 @@ from unittest import result
 import boolean
 from lib4sbom.parser import SBOMParser
 from typing import Union
-from pymongo import MongoClient
+
 
 from sqlalchemy import MetaData
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, TIMESTAMP, func
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 
-from pymongo.results import DeleteResult, InsertOneResult
 from smt.tree import TreeMapStore,TreeMemoryStore
 from smt.tree import SparseMerkleTree
 from smt.utils import DEFAULTVALUE, PLACEHOLDER
@@ -111,22 +110,6 @@ class SMTValue(Base):
 def make_args(cmd):
     args = cmd.encode().split()
     return (c_char_p * len(args))(*args)
-
-
-def store_SBOM_as_json_in_mongo_db(flatten_SBOM_data):
-
-    result=collection.update_one({"name": flatten_SBOM_data["name"]}, {"$set": flatten_SBOM_data}, upsert=True)
-    if result.upserted_id:
-        print(f'Document inserted with id: {result.upserted_id}')
-    else:
-        print(f'Document not inserted')
-
-
-def retrieve_SBOM_from_monngo_db(name):
-    query = {"name": name}
-    retrived_sbom=collection.find(query)
-    for doc in retrived_sbom:
-        return doc 
 
 
 def try_tree():
@@ -275,9 +258,7 @@ def main():
     tree_name = f"{name}"  # Create tree name
     trees[tree_name] =sbom_tree
     print(trees)
-    store_SBOM_as_json_in_mongo_db(flatten_SBOM_data)
-    #get SBOM  from the db by its file name
-    retrieve_SBOM_from_monngo_db(name)
+
     
 
     #using tree stucture, store sbom as tree in sqlalchamey db
@@ -319,10 +300,6 @@ def main():
 
 
 
-# Connect to MongoDB
-client = MongoClient('mongodb://localhost:27017/')
-db = client['local']
-collection = db['SBOM']
  
 # Create a database engine
 engine = create_engine('sqlite:///dfsddff.db')  # Use SQLite for this example
