@@ -1,6 +1,7 @@
-test/data/*
-virtualenv
+# Ignore Mac DS_Store files
 **/.DS_Store
+# Ignore the venv Petra
+/Petra/
 #Ignore output files
 **/flatten_sbom
 **/master_key
