@@ -3,18 +3,10 @@ import argparse
 #import pyopenabe
 from ctypes import *
 import os
-import sqlite3
 from traceback import print_tb
 from unittest import result
-import boolean
 from lib4sbom.parser import SBOMParser
 from typing import Union
-
-
-from sqlalchemy import MetaData
-from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, TIMESTAMP, func
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship, sessionmaker
 
 from smt.tree import TreeMapStore,TreeMemoryStore
 from smt.tree import SparseMerkleTree
@@ -28,6 +20,8 @@ from spdx_tools.spdx.model import (Checksum, ChecksumAlgorithm, File, FileType, 
 from spdx_tools.spdx.parser.parse_anything import parse_file
 from spdx_tools.spdx.validation.document_validator import validate_full_spdx_document
 from spdx_tools.spdx.writer.write_anything import write_file
+
+from petra.lib.database import get_session, SBOM, SMTNode, SMTValue
 
 
 def prove(tree,SBOMField):
@@ -86,27 +80,7 @@ def flatten_SPDX(file_name):
     return flatten_sbom ,sbom_file_encoding
 
 
-Base = declarative_base()
-class SBOM(Base):
-        __tablename__ = 'sbom'
-        
-        id = Column(Integer, primary_key=True)
-        name = Column(String, nullable=False,unique=True)
-        root_hash = Column(String, nullable=False)
-        created_at = Column(TIMESTAMP, server_default=func.now())
-class SMTNode(Base):
-        __tablename__ = 'smt_nodes'
-        sbom_id = Column(Integer, ForeignKey('sbom.id'))
-        key = Column(String, nullable=False,primary_key=True)
-        value = Column(String, nullable=False)
-        #parent_hash = Column(String)
-class SMTValue(Base):
-        __tablename__ = 'smt_values'
-        sbom_id = Column(Integer, ForeignKey('sbom.id'))
-        key = Column(String, nullable=False,primary_key=True)
-        value = Column(String, nullable=False)
-        #parent_hash = Column(String)
-      
+     
 def make_args(cmd):
     args = cmd.encode().split()
     return (c_char_p * len(args))(*args)
@@ -126,7 +100,7 @@ def try_tree():
     return t
 
 
-def store_SBOM_as_tree_in_db(tree_to_store,sbom_name):
+def store_SBOM_as_tree_in_db(tree_to_store, sbom_name):
   
     added_sbom=add_or_get_to_db(SBOM,name=sbom_name,root_hash=tree_to_store.root_as_bytes())
     session.flush()
@@ -241,9 +215,9 @@ def main():
     #SBOM_file_name=str(args.sbom)
  
     #  path of submodules data 
-    in_the_lab_spdx="../sbom_data/bom-shelter/in-the-lab/spdx-popular-containers/data"
-    in_the_wild_cyclonedx="../sbom_data/bom-shelter/in-the-wild/cyclonedx"
-    in_the_wild_spdx = '../sbom_data/bom-shelter/in-the-wild/spdx' 
+    in_the_lab_spdx="../../sbom_data/bom-shelter/in-the-lab/spdx-popular-containers/data"
+    in_the_wild_cyclonedx="../../sbom_data/bom-shelter/in-the-wild/cyclonedx"
+    in_the_wild_spdx = '../../sbom_data/bom-shelter/in-the-wild/spdx' 
 
 
     SBOM_file_name="julia.spdx.json"
@@ -260,7 +234,7 @@ def main():
 
     
 
-    #using tree stucture, store sbom as tree in sqlalchamey db
+    #using tree stucture, store sbom as tree in sqlalchemy db
     t1=try_tree()
     
     store_SBOM_as_tree_in_db(sbom_tree,sbom_tree.get(b"name"))      
@@ -269,10 +243,10 @@ def main():
         print("The Trees are identical in structures and nodes")
 
 
-    cpabe_setup_file = "src/lib/cpabe-setup.so"
-    cpabe_keygen_file = "src/lib/cpabe-keygen.so"
-    cpabe_enc_file = "src/lib/cpabe-enc.so"
-    cpabe_dec_file = "sr    c/lib/cpabe-dec.so"
+    cpabe_setup_file = "petra/lib/cpabe-setup.so"
+    cpabe_keygen_file = "petra/lib/cpabe-keygen.so"
+    cpabe_enc_file = "petra/src/lib/cpabe-enc.so"
+    cpabe_dec_file = "petra/lib/cpabe-dec.so"
 
 
     #testing CP-ABE setup algorithim
@@ -298,17 +272,8 @@ def main():
     decrypt_SBOM_field(cpabe_dec_file,"dataLicense","pub_key","priv_key")
 
 
-
+session = get_session()
  
-# Create a database engine
-engine = create_engine('sqlite:///dfsddff.db')  # Use SQLite for this example
-
-# Create the table in the database
-Base.metadata.create_all(engine)
-
-# Create a session
-Session = sessionmaker(bind=engine)
-session = Session()   
 if __name__ == "__main__":
     main()
 
