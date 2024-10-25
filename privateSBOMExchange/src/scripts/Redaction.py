@@ -168,7 +168,6 @@ def retrieve_sbom_as_tree_from_db(sbom_name):
     for response in smt_vals.all():
         values[response.key]=response.value
         print(response.sbom_id,response.key,response.value)
-    #print(retrieve_SBOM_from_monngo_db("julia-spdx"))
     retrived_tree=SparseMerkleTree(store=TreeMemoryStore())
     memorystore=TreeMemoryStore()
     memorystore.nodes=nodes
