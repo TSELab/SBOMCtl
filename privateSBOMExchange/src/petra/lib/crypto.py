@@ -1,40 +1,36 @@
-def decrypt_SBOM_field(cpabe_dec_file,field_name,pub_key,priv_key):
-    args = make_args(f"3 {pub_key} {priv_key} {field_name}.cpabe")
-    print(*args)
-        
-    cpabe_decrypt_functions = CDLL(cpabe_dec_file)
-    cpabe_decrypt_functions.main.restype = c_int
-    cpabe_decrypt_functions.main.argtypes = c_int,POINTER(c_char_p)
-    cpabe_decrypt_functions.main(len(args), args)
-    cpabe_decrypt_functions.reset_globals()
+import sys
 
-def generate_user_private_key(cpabe_keygen_file,priv_key,pub_key,master_key,user_attributes):
-    cpabe_keygen_functions = CDLL(cpabe_keygen_file)
+try:
+    from cpabe import cpabe_decrypt, cpabe_encrypt, cpabe_keygen, cpabe_setup, cpabe_delegate
+except:
+    print("Can't import cpabe! Make sure you ran maturing develop or installed the cpabe package under src!")
 
-    cpabe_keygen_functions.main.restype = c_int
-    cpabe_keygen_functions.main.argtypes = c_int,POINTER(c_char_p)
-    #cpabe-keygen -o sara_priv_key pub_key master_key test/policy
+def init_abe():
+    return cpabe_setup()
 
-    args = make_args(f'5 -o {priv_key} {pub_key} {master_key} {user_attributes}')
-    print(*args)
-    cpabe_keygen_functions.main(len(args), args)
+def decrypt_SBOM_field(bundle, field_name, secret_key):
+    for key, value in bundle:
+        if key == field_name:
+            target = value
+            break
+        print(key)
+    else:
+        return None
+    result_array = cpabe_decrypt(secret_key, target)
+    return "".join([chr(x) for x in result_array])
 
-def encrypt_SBOM(flatten_SBOM_data, cpabe_enc_file,pub_key,policy):
-    
-    #ToDo: policy needs to be splitted for each field
-    cpabe_encrypt_functions = CDLL(cpabe_enc_file)
-    print(type(cpabe_encrypt_functions))
-    cpabe_encrypt_functions.main.restype = c_int
-    cpabe_encrypt_functions.main.argtypes = c_int,POINTER(c_char_p)     
+def generate_user_private_key(public_key, master_key, user_attributes):
+    return cpabe_keygen(public_key, master_key, user_attributes)
 
-    for key,value in flatten_SBOM_data.items():
-        with open (key,"w") as SBOM_field_file:
-            if isinstance(value, bool):
-                value=str(value)
-            SBOM_field_file.write(value)                     
-        args = make_args(f"3 {pub_key} {key} {policy}")
-        print(*args)
-        cpabe_encrypt_functions.main(len(args), args)
-        cpabe_encrypt_functions.reset_globals()
+def encrypt_SBOM(flatten_SBOM_data, pub_key, policy):
+
+    result = []
+    for key, value in flatten_SBOM_data.items():
+        if isinstance(value, bool):
+            value=str(value)
+        ct = cpabe_encrypt(pub_key, policy, value.encode("utf-8"))
+        result.append((key, ct))
+    return result
+
 
 
