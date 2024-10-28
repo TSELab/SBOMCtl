@@ -113,21 +113,15 @@ class MerkleVisitor:
     def visit_leaf(self, leaf):
         processed_data = cpabe(leaf.data)  # Process the leaf data
         return hashlib.sha256(processed_data).digest()  # Return the hash as bytes
-
     def visit_internal_node(self, node):
-        # Hash for "package"
-        package_hash = cpabe("package")
-        
-        # Prepare the string for the package name and children
+        #H(cpabe("PackageName") | cpabe(PackageName) | children)
+        # Hash for field name: PackageName and field value: node.data
+        encrypted_package = cpabe("PackageName")
+        encrypted_package_name = cpabe(node.data)
+        # get hashes of the children
         children_hashes = b''.join(child.accept(self) for child in node.children)
-        combined_children_data = (node.data).encode()+children_hashes
-        
-        # Apply cpabe to the combined data of package name and children
-        children_hash = cpabe(combined_children_data)
-
-        # Combine both hashes
-        final_hash = package_hash + children_hash
-        return hashlib.sha256(final_hash).digest()
+        data_to_hash = encrypted_package+encrypted_package_name+children_hashes
+        return hashlib.sha256(data_to_hash).digest()
     def visit_root(self, root):
         # Compute hash for the root using its data and the hashes of its children
         children_hashes = b''.join(child.accept(self) for child in root.children)
