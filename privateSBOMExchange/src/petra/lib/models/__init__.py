@@ -46,7 +46,8 @@ class RootNode(Node):
 class MerkleVisitor:
     """Visitor that computes the hash of the nodes."""
     def visit_leaf(self, leaf):
-        processed_data = cpabe(leaf.data)  # Process the leaf data
+        leaf_data=f"Field{leaf.data}"
+        processed_data = cpabe(leaf_data)  # Process the leaf data
         return hashlib.sha256(processed_data).digest()  # Return the hash as bytes
     
     def visit_internal_node(self, node):
@@ -61,6 +62,8 @@ class MerkleVisitor:
     
     def visit_root(self, root):
         # Compute hash for the root using its data and the hashes of its children
+        #ToDo if cild is a root, dont accept it , just return its hash
+        #where do I get the hash from? 
         children_hashes = b''.join(child.accept(self) for child in root.children)
         combined_data = root.data.encode() + children_hashes
         return hashlib.sha256(cpabe(combined_data)).digest()
@@ -91,15 +94,12 @@ def SBOM_as_tree(flatten_SBOM_data,sbom_file_encoding):
     for field_name, value in flatten_SBOM_data.items():
         if field_name == "name":
             tree_name = value
-        
         # Prepare the SBOM field for insertion
         sbom_field = {field_name: value}
-        
         for item, item_value in sbom_field.items():
             # Convert boolean values to strings
             if isinstance(item_value, bool):
                 item_value = str(item_value)
-            
             try:
                 # Update the tree and assert conditions
                 root_after_update = tree.update(item.encode(sbom_file_encoding), item_value.encode(sbom_file_encoding))
@@ -108,8 +108,8 @@ def SBOM_as_tree(flatten_SBOM_data,sbom_file_encoding):
                 assert DEFAULTVALUE == tree.get(b""), "Tree must return default value for an empty key."
             except Exception as e:
                 print(f"Error updating tree with {item}: {e}")
-
     return tree, tree_name
+
 
 def prove(tree, SBOMFields):
     """
@@ -157,7 +157,6 @@ def tree_from_nodes(nodes, values, root):
     # Set the memory store and root for the new tree
     new_tree.store = memorystore
     new_tree.root = root
-
     return new_tree
 
 
@@ -177,7 +176,7 @@ def build_sbom_tree(doc):
     for field_name, field_value in document_info.items():
 #        print(f"Field{field_name}{field_value}")
         if not field_name.startswith('_'):
-            leaves.append(Leaf(f"Field{field_name}{field_value}"))
+            leaves.append(Leaf(f"{field_name}{field_value}"))
 
     # Create internal nodes for each package
     pkgs=doc.get_packages()
@@ -188,7 +187,7 @@ def build_sbom_tree(doc):
         # Extract fields for each package
         package_fields = [
             
-            Leaf(f"Field{key}{value}")
+            Leaf(f"{key}{value}")
             for key, value in package.items()
             if not key.startswith('_')  # Exclude internal attributes
         ]
@@ -197,37 +196,51 @@ def build_sbom_tree(doc):
     files=doc.get_files()
     if (files):
         for file in files:
-            leaves.append(Leaf(f"Fieldfile{file}"))
+            leaves.append(Leaf(f"file{file}"))
         
     licenses=doc.get_licenses()
     if (licenses):
         for license in licenses:
-            leaves.append(Leaf(f"Fieldlicense{license}"))
+            leaves.append(Leaf(f"license{license}"))
         
     vulnarabilities=doc.get_vulnerabilities()
     if (vulnarabilities):
         for vulnarability in vulnarabilities:
-            leaves.append(Leaf(f"Fieldvulnarability{vulnarability}"))
+            leaves.append(Leaf(f"vulnarability{vulnarability}"))
             
     relationships=doc.get_relationships()
     if (relationships):
         for relationship in relationships:
-            leaves.append(Leaf(f"Fieldrelationship{relationship}"))
+            leaves.append(Leaf(f"relationship{relationship}"))
           
     services=doc.get_services()
     if(services):
         for service in services:
-            leaves.append(Leaf(f"Fieldservice{service}"))
-                 
+            leaves.append(Leaf(f"service{service}"))
+    
+    foo_children=[]
+    package={"name":"libwhich","id":"SPDXRef-libwhich"}
+    foo_dep_leaves = [
+        
+        Leaf(f"Field{key}{value}")
+        for key, value in package.items()
+        if not key.startswith('_')  # Exclude internal attributes
+    ]
+    foo_children.append(InternalNode("dep", foo_dep_leaves))
+
+    foo_leaves=[Leaf("version2.3"),Leaf("created20/10")]
+    root2=RootNode("Foo",foo_children+foo_leaves)             
     # Create the root node containing all leaves and package nodes
     sbom_name=doc.get_document()["name"]
+    root_children.append(root2)
     root = RootNode(sbom_name,leaves + root_children)
     return root
 
 
 # Parse SPDX data into a Document object
 SBOM_parser = SBOMParser()   
-SBOM_parser.parse_file("../sbom_data/bom-shelter/in-the-wild/spdx/julia.spdx.json")   
+#SBOM_parser.parse_file("../sbom_data/bom-shelter/in-the-wild/spdx/julia.spdx.json")   
+SBOM_parser.parse_file("simple_sbom.json")
 # Build the tree and compute the root hash
 sbom=SBOM_parser.sbom
 sbom_tree = build_sbom_tree(sbom)
