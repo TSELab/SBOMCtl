@@ -1,3 +1,5 @@
+from typing import List
+
 from smt.tree import TreeMemoryStore
 from smt.tree import SparseMerkleTree
 from smt.utils import DEFAULTVALUE, PLACEHOLDER
@@ -8,80 +10,200 @@ import hashlib
 from lib4sbom.parser import SBOMParser
        
 class Node:
-    """Base class for a node in the Merkle tree."""
+    """Base class for a node in the SBOM tree."""
     def accept(self, visitor):
         raise NotImplementedError("Must implement accept method.")
 
 
-class Leaf(Node):
-    """Represents a leaf node containing binary data."""
-    def __init__(self, data):
-        self.data = data  # Store data as bytes
+class FieldNode(Node):
+    """Represents a field node that is a leaf in the tree, containing an SBOM field as a string.
+
+    Attributes
+    ----------
+    data : str
+        The field data stored as a string.
+    encrypted_and_hashed_data : bytes or None
+        The encrypted and hashed representation of the data, initially set to None.
+    """
+    def __init__(self, data:str):
+        self.data = data  # Store data as string
+        self.encrypted_and_hashed_data=None #store hashed data when visited by MerkleVisitor
 
     def accept(self, visitor):
-        return visitor.visit_leaf(self)
+        return visitor.visit_field_node(self)
 
 
-class InternalNode(Node):
-    """Represents an internal node that can have multiple children."""
-    def __init__(self, package_name, children):
+class PackageNode(Node):
+    """Represents a package node that can have multiple children of type FieldNode.
+
+    This node represents a dependency that does not have an available SBOM tree in the database.
+
+    Attributes
+    ----------
+    data : str
+        The package name stored as data.
+    encrypted_and_hashed_data : bytes or None
+        The encrypted and hashed representation of the package data, initially set to None.
+    children : List[FieldNode]
+        A list of child FieldNode instances.
+    """
+    def __init__(self, package_name, children:List[FieldNode]):
+        """Initialize a PackageNode.
+
+        Parameters
+        ----------
+        package_name : str
+            The name of the package.
+        children : List[FieldNode]
+            A list of FieldNode instances representing the fields of the package.
+        """
         self.data = package_name  # Store package name as data
+        self.encrypted_and_hashed_data=None
         self.children = children
 
     def accept(self, visitor):
-        return visitor.visit_internal_node(self)
+        return visitor.visit_package_node(self)
 
 
-class RootNode(Node):
-    """Represents the root node of the Merkle tree, which can hold multiple internal nodes."""
-    def __init__(self,data, children):
-        self.children = children  # Hold the children directly
+class SbomNode(Node):
+    """Represents the root node of a Software Bill of Materials (SBOM) tree.
+
+    This node can have three types of children, all of which are derived from the Node class:
+    1. **FieldNode**: Represents a field in an SBOM document.
+    2. **PackageNode**: Represents a package dependency that does not have an available SBOM tree in the database.
+    3. **SbomNode**: Represents a package dependency that does have an available SBOM tree in the database.
+
+    Attributes
+    ----------
+    data : str
+        The name or identifier of the SBOM.
+    encrypted_and_hashed_data : bytes or None
+        The encrypted and hashed representation of the data, initially set to None.
+    children : List[Node]
+        A list of child nodes, which can be FieldNode, PackageNode, or other SbomNode instances.
+    """
+    def __init__(self,data, children:List[Node]):
+        """Initialize an SbomNode.
+
+        Parameters
+        ----------
+        data : str
+            The name of the SBOM.
+        children : List[Node]
+            A list of child nodes that can be FieldNode, PackageNode, or other SbomNode instances.
+        """
         self.data=data
+        self.encrypted_and_hashed_data=None
+        self.children = children  # Hold the children directly
 
     def accept(self, visitor):
         # Accept the visitor on the root node and then on all children
-        return visitor.visit_root(self)
+        return visitor.visit_sbom_node(self)
 
   
 class MerkleVisitor:
-    """Visitor that computes the hash of the nodes."""
-    def visit_leaf(self, leaf):
-        leaf_data=f"Field{leaf.data}"
-        processed_data = cpabe(leaf_data)  # Process the leaf data
-        return hashlib.sha256(processed_data).digest()  # Return the hash as bytes
+    """Visitor that encrypts then computes the hash of the data in the nodes."""
+    def visit_field_node(self, node:FieldNode):
+        """Visit a FieldNode and compute the hash of its data.
+
+        The hash is computed using the formula:
+        H(cpabe("Field" | Field Name | Field Value))
+        where `cpabe` is the encryption technique used.
+
+        Parameters
+        ----------
+        node : FieldNode
+            The field node whose data will be hashed.
+
+        Returns
+        -------
+        bytes
+            The computed hash of the field node data.
+        """
+        leaf_data=f"Field{node.data}" # Format Field|{Field Name}|{Field Value}
+        processed_data = cpabe(leaf_data) 
+        hashed_data=hashlib.sha256(processed_data).digest()
+        node.encrypted_and_hashed_data=hashed_data
+        return hashed_data # Return the hash as bytes
     
-    def visit_internal_node(self, node):
-        #H(cpabe("PackageName") | cpabe(PackageName) | children)
-        # Hash for field name: PackageName and field value: node.data
+    def visit_package_node(self, node:PackageNode):
+        """Visit a PackageNode and compute the hash of its data and children.
+
+        The hash is computed using the formula:
+        H(cpabe("PackageName") | cpabe({PackageName}) | children)
+        where `cpabe` is the encryption technique used.
+
+        Parameters
+        ----------
+        node : PackageNode
+            The package node whose data and children will be hashed.
+
+        Returns
+        -------
+        bytes
+            The computed hash of the package node data and its children.
+        """
         encrypted_package = cpabe("PackageName")
         encrypted_package_name = cpabe(node.data)
         # get hashes of the children
         children_hashes = b''.join(child.accept(self) for child in node.children)
         data_to_hash = encrypted_package+encrypted_package_name+children_hashes
-        return hashlib.sha256(data_to_hash).digest()
+        hashed_data=hashlib.sha256(data_to_hash).digest()
+        node.encrypted_and_hashed_data=hashed_data
+        return hashed_data
     
-    def visit_root(self, root):
+    def visit_sbom_node(self, node:SbomNode):
+        """Visit an SbomNode and compute the hash of its data and children.
+
+        The hash is computed using the formula:
+        H(cpabe(sbomName) | children)
+        where `cpabe` is the encryption technique used.
+
+        Parameters
+        ----------
+        node : SbomNode
+            The SBOM node whose data and children will be hashed.
+
+        Returns
+        -------
+        bytes
+            The computed hash of the SBOM node data and its children.
+        """
         # Compute hash for the root using its data and the hashes of its children
-        #ToDo if cild is a root, dont accept it , just return its hash
-        #where do I get the hash from? 
-        children_hashes = b''.join(child.accept(self) for child in root.children)
-        combined_data = root.data.encode() + children_hashes
-        return hashlib.sha256(cpabe(combined_data)).digest()
+        #ToDo if child is a root, dont accept it , just return its tree 
+        children_hashes = b''.join(child.accept(self) for child in node.children)
+        combined_data = cpabe(node.data) + children_hashes
+        hashed_data=hashlib.sha256(cpabe(combined_data)).digest()
+        node.encrypted_and_hashed_data=hashed_data
+        return hashed_data 
 
 
 class PrintVisitor:
-    """Visitor that prints the data of each node."""
-    def visit_leaf(self, leaf):
-        print(f"Leaf: {leaf.data}")
+    """Visitor that prints the data and hash of each node."""
+    def visit_field_node(self, node:FieldNode):
+        print(f"Field: {node.data}")
+        try:
+            print(f"Hash: {node.encrypted_and_hashed_data.hex()}")
+        except AttributeError:
+            print("Hashes have not been calculated, you need to first visit the tree using the Merkle Visitor")
 
-    def visit_internal_node(self, node):
-        print(f"Internal Node: {node.data}")  # Print package data
+    def visit_package_node(self, node:PackageNode):
+        print(f"Package: {node.data}")  # Print package data
+        try:
+            print(f"Hash: {node.encrypted_and_hashed_data.hex()}")
+        except AttributeError:
+            print("Hashes have not been calculated, you need to first visit the tree using the Merkle Visitor")
+
         for child in node.children:
             child.accept(self)
             
-    def visit_root(self, root):
-        print(f"Root: {root.data}")  # Print root data
-        for child in root.children:
+    def visit_sbom_node(self, node:SbomNode):
+        print(f"SBOM: {node.data}")  # Print root data
+        try:
+            print(f"Hash: {node.encrypted_and_hashed_data.hex()}")
+        except AttributeError:
+            print("Hashes have not been calculated, you need to first visit the tree using the Merkle Visitor")
+        for child in node.children:
             child.accept(self)        
      
      
@@ -168,7 +290,7 @@ def cpabe(data):
         return data
 
        
-def build_sbom_tree(doc):
+def build_sbom_tree(doc:SBOMParser):
     """Builds a Merkle tree from an SPDX SBOM.""" 
     leaves = []
     #create internal nodes for each field
@@ -176,7 +298,7 @@ def build_sbom_tree(doc):
     for field_name, field_value in document_info.items():
 #        print(f"Field{field_name}{field_value}")
         if not field_name.startswith('_'):
-            leaves.append(Leaf(f"{field_name}{field_value}"))
+            leaves.append(FieldNode(f"{field_name}{field_value}"))
 
     # Create internal nodes for each package
     pkgs=doc.get_packages()
@@ -187,67 +309,40 @@ def build_sbom_tree(doc):
         # Extract fields for each package
         package_fields = [
             
-            Leaf(f"{key}{value}")
+            FieldNode(f"{key}{value}")
             for key, value in package.items()
             if not key.startswith('_')  # Exclude internal attributes
         ]
-        root_children.append(InternalNode(package["name"], package_fields))
+        root_children.append(PackageNode(package["name"], package_fields))
 
     files=doc.get_files()
     if (files):
         for file in files:
-            leaves.append(Leaf(f"file{file}"))
+            leaves.append(FieldNode(f"file{file}"))
         
     licenses=doc.get_licenses()
     if (licenses):
         for license in licenses:
-            leaves.append(Leaf(f"license{license}"))
+            leaves.append(FieldNode(f"license{license}"))
         
     vulnarabilities=doc.get_vulnerabilities()
     if (vulnarabilities):
         for vulnarability in vulnarabilities:
-            leaves.append(Leaf(f"vulnarability{vulnarability}"))
+            leaves.append(FieldNode(f"vulnarability{vulnarability}"))
             
     relationships=doc.get_relationships()
     if (relationships):
         for relationship in relationships:
-            leaves.append(Leaf(f"relationship{relationship}"))
+            leaves.append(FieldNode(f"relationship{relationship}"))
           
     services=doc.get_services()
     if(services):
         for service in services:
-            leaves.append(Leaf(f"service{service}"))
+            leaves.append(FieldNode(f"service{service}"))
     
-    foo_children=[]
-    package={"name":"libwhich","id":"SPDXRef-libwhich"}
-    foo_dep_leaves = [
-        
-        Leaf(f"Field{key}{value}")
-        for key, value in package.items()
-        if not key.startswith('_')  # Exclude internal attributes
-    ]
-    foo_children.append(InternalNode("dep", foo_dep_leaves))
 
-    foo_leaves=[Leaf("version2.3"),Leaf("created20/10")]
-    root2=RootNode("Foo",foo_children+foo_leaves)             
-    # Create the root node containing all leaves and package nodes
     sbom_name=doc.get_document()["name"]
-    root_children.append(root2)
-    root = RootNode(sbom_name,leaves + root_children)
+
+    root = SbomNode(sbom_name,leaves + root_children)
+    #ToDo store sign (root) , hash (root), and the tree in the database
     return root
-
-
-# Parse SPDX data into a Document object
-SBOM_parser = SBOMParser()   
-#SBOM_parser.parse_file("../sbom_data/bom-shelter/in-the-wild/spdx/julia.spdx.json")   
-SBOM_parser.parse_file("simple_sbom.json")
-# Build the tree and compute the root hash
-sbom=SBOM_parser.sbom
-sbom_tree = build_sbom_tree(sbom)
-print_visitor = PrintVisitor()
-sbom_tree.accept(print_visitor)
-merkle_visitor = MerkleVisitor()
-merkle_root_hash = sbom_tree.accept(merkle_visitor)
-# Convert the root hash to a hexadecimal representation for display
-merkle_root_hash_hex = merkle_root_hash.hex()
-print("Merkle Root Hash for SBOM:", merkle_root_hash_hex)
