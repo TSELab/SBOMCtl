@@ -1,3 +1,4 @@
+import configparser
 from lib4sbom.parser import SBOMParser
 
 from petra.lib.models import *
@@ -19,3 +20,6 @@ sbom_tree.accept(print_visitor)
 # Convert the root hash to a hexadecimal representation for display
 merkle_root_hash_hex = merkle_root_hash.hex()
 print("Merkle Root Hash for SBOM:", merkle_root_hash_hex)
+encrypt_visitor = EncryptVisitor("policy")
+sbom_tree.accept(encrypt_visitor)
+print("done encrypting")
