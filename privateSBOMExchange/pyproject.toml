@@ -1,18 +1,14 @@
 [project]
-name = "Private SBOM Exchange"
+name = "petra"
 version = "0.0.1"
 authors = [
   { name="Eman Abu Ishgair", email="eabuishg@purdue.edu" },
 ]
 description = "Package to redact SBOM"
 readme = "README.md"
-requires-python = ">="
+requires-python = ">=3.9"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: Apache",
     "Operating System :: OS Independent",
 ]
-
-[project.urls]
-Homepage = ""
-Issues = ""
