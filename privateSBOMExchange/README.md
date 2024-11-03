@@ -1,5 +1,13 @@
 # PETRA
 
+In this doc:
+
+[Dir contents]: #contents
+[Petra setup]: #setup
+[Using Petra]: #petra-usage
+
+## Contents
+
 This directory contains the two modules needed to run the Petra system (currently under submission).
 
 The following files are currently in here
@@ -13,33 +21,68 @@ The following files are currently in here
 Of which, `docs` contains documentation, and Makefile, pyproject.toml and
 requirements.txt, bootstrap.sh support setting up the project.
 
-Make sure you have a virtual environment set up (e.g., by making make init) or
-installing the requirements on a virtual environment using `pip install -r
-requirements.txt`.
+## Setup
 
-src contains the code needed for this scrpit, and it is split into two modules: petra and cpabe.
+You can set up a virtual environment in two ways:
 
-## cpabe
+```
+make init
+```
+
+or
+
+```
+virtualenv <venv name>
+source <venv name>/bin/activate
+pip install -r requirements.txt
+```
+
+`/src` contains the code needed for this script, and it is split into two modules: petra and cpabe.
+
+### cpabe
 
 cpabe is the python bindings for the rust crate rabe, this is needed to support CP-abe functionality.
+
 Before you run any other code, make sure that these bindings are built by issuing:
 
 ```
-maturin develop
+sudo apt install rustc cargo
+cd cpabe
 
+maturin develop
 ```
 
 This will build the rust code, as well as install an editable version of the
 python bindings into the current virtual environment.
 
-## petra
+### petra
 
-Petra is the main system. If cpabe is installed, you should be able to run things by running the test files under `scripts`.
+Petra is the main system. If cpabe is installed, you should be able to
+install the petra package:
+
+```
+cd petra
+pip install -e .
+```
+
+### Optional: SBOM datasets
+
+The final setup step pulls SBOM datasets from linked repos:
+
+```
+git submodule update --init
+```
+
+## Petra Usage
+
+### Tests
+
+After the setup, you should be able to run the Petra CLI by running the test files under `/tests`.
 
 For example:
 
 ```
-python scrpts/Redactor.py
+python tests/test_models.py
 ```
 
 Should showcase an encryption and selective decription of target sbom --- make

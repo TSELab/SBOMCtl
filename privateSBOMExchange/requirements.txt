@@ -1,3 +1,4 @@
+pip
 beartype==0.18.5
 boolean.py==4.0
 click==8.1.7
