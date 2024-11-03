@@ -13,6 +13,8 @@ from lib4sbom.parser import SBOMParser
 
 from cpabe import cpabe_encrypt,cpabe_setup,cpabe_keygen,cpabe_decrypt
 
+data_placeholder:str="encrypted"
+encrypted_data_placeholder:bytes=b"public"
 pk, mk = cpabe_setup()
 """            pt = cpabe_decrypt(sk, node.encrypted_data)
             pt_text = "".join([chr(x) for x in pt])
@@ -32,8 +34,8 @@ class FieldNode(Node):
         The field name stored as a string.
     field_value : str
         The field data stored as a string.
-    encrypted_data : bytes or None
-        The encrypted data using cpabe, initially set to None and might be set by EncryptVisitor based on the policy
+    encrypted_data : bytes
+        The encrypted data using cpabe, initially set to placeholder value and might be set by EncryptVisitor based on the policy
     hash: bytes or None
         The hash of the data, initially set to None, should be set by the MerkleVisitor
     policy: str
@@ -41,9 +43,18 @@ class FieldNode(Node):
 
     """
     def __init__(self, field:str,value:str):
+        """Initialize a FieldNode.
+
+        Parameters
+        ----------
+        field : str
+            The field name.
+        value : str
+            The field value
+        """
         self.field_name = field 
         self.field_value=value 
-        self.encrypted_data:bytes=None 
+        self.encrypted_data:bytes=encrypted_data_placeholder
         self.hash:bytes=None 
         self.policy:str=""
     def accept(self, visitor):
@@ -53,33 +64,38 @@ class FieldNode(Node):
 class ComplexNode(Node):
     """Represents a complex node that can have multiple children of type FieldNode.
 
-    This node represents a dependency that does not have an available SBOM tree in the database.
-
     Attributes
     ----------
-    field_name : str
-        "PackageName".
-    field_value :str
-        The package name.
-    encrypted_and_hashed_data : bytes or None
-        The encrypted and hashed representation of the package data, initially set to None.
+    type : str
+        The type of the complex node, it can have one of these values: document information, package , vulnerability, file, service, license or relationship
+    identifier_field : str
+        The name of the identifier field of the complex node , for package, file, service, document information, license --> name , for vulnerability --> product , for relationship --> type
+    identifier_field_value :str
+        The value of the identifier of the complex node.
+    encrypted_data : bytes
+        The encrypted data using cpabe, initially set to placeholder value and might be set by EncryptVisitor based on the policy
     children : List[FieldNode]
         A list of child FieldNode instances.
     """
-    def __init__(self, type_name:str,type_value:str, children:List[FieldNode]):
-        """Initialize a PackageNode.
+    def __init__(self, type:str,identifier_field:str,identifier_field_value:str, children:List[FieldNode]):
+        """Initialize a ComplexNode.
 
         Parameters
         ----------
-        package_name : str
-            The name of the package.
+        type : str
+            The type of the complex node.
+        identifier_field : str
+            The name of the identifier field of the node.
+        identifier_field_value : str
+            The value of the identifier field.
         children : List[FieldNode]
             A list of FieldNode instances representing the fields of the package.
         """
-        self.metadata_type_name:str= type_name  
-        self.metadata_type_value:str=type_value
-        self.encrypted_data=None #store encrypted data when visited by Encrypt visitor
-        self.hash=None #store hashed data when visited by Merkle visitor
+        self.type:str=type
+        self.identifier_field:str= identifier_field  
+        self.identifier_field_value:str=identifier_field_value
+        self.encrypted_data=encrypted_data_placeholder 
+        self.hash=None 
         self.children = children
 
     def accept(self, visitor):
@@ -89,17 +105,14 @@ class ComplexNode(Node):
 class SbomNode(Node):
     """Represents the root node of a Software Bill of Materials (SBOM) tree.
 
-    This node can have three types of children, all of which are derived from the Node class:
-    1. **FieldNode**: Represents a field in an SBOM document.
-    2. **ComplexNode**: Represents a complex node that has multiple children.
-    3. **SbomNode**: Represents a package dependency that does have an available SBOM tree in the database.
+    This node can have two types of children, which are derived from the Node class:
+    1. **ComplexNode**: Represents a complex node that has multiple children.
+    2. **SbomNode**: Represents a package dependency that does have an available SBOM tree in the database.
 
     Attributes
     ----------
     SBOM_name : str
-        The name or identifier of the SBOM.
-    encrypted_data : bytes or None
-        The encrypted data using cpabe, initially set to None and might be set by EncryptVisitor based on the policy
+        The name of the SBOM .
     hash: bytes or None
         The hash of the data, initially set to None, should be set by the MerkleVisitor
     children : List[Node]
@@ -122,7 +135,6 @@ class SbomNode(Node):
             A list of child nodes that can be FieldNode, PackageNode, or other SbomNode instances.
         """
         self.SBOM_name=name
-        self.encrypted_data=None 
         self.hash=None
         self.children = children 
         self.signature=None
@@ -183,7 +195,7 @@ class MerkleVisitor:
         if node.encrypted_data is not None:
             data_to_hash = node.encrypted_data+children_hashes
         else:
-            data_to_hash=(node.metadata_type_name +node.metadata_type_value).encode()+children_hashes
+            data_to_hash=(node.identifier_field +node.identifier_field_value).encode()+children_hashes
         node.hash=hashlib.sha256(data_to_hash).digest()
         return node.hash
     
@@ -219,7 +231,7 @@ class PrintVisitor:
             print("Hashes have not been calculated, you need to first visit the tree using the Merkle Visitor")
 
     def visit_complex_node(self, node:ComplexNode):
-        print(f"{node.metadata_type_name}:{node.metadata_type_value}") 
+        print(f"{node.type}:{node.identifier_field}:{node.identifier_field_value}") 
         try:
             print(f"Hash: {node.hash.hex()}")
         except AttributeError:
@@ -260,21 +272,25 @@ class EncryptVisitor:
         if node.policy:
             print(f"policy found for FieldNode '{node.field_name}', {node.policy}.")
             node.encrypted_data = cpabe_encrypt(pk, node.policy, data_to_encrypt.encode("utf-8"))
-            node.field_name=""
-            node.field_value=""
+            node.field_name=data_placeholder
+            node.field_value=data_placeholder
         else:
             print(f"No policy found for FieldNode '{node.field_name}'.")
 
     def visit_complex_node(self, node:ComplexNode):
         """Encrypt the data for a ComplexNode and assign policies to its children."""
+        data_to_encrypt=f"{node.type}:{node.identifier_field}:{node.identifier_field_value}
         # Check for * policy( all fields policy ) for the complex node
-        apply_to_all_fields = self.get_policy_for_complex_node(node.metadata_type_name)
-        
+        apply_to_all_fields = self.get_policy_for_complex_node(node.identifier_field)
+        if apply_to_all_fields:
+            node.policy= apply_to_all_fields
+            node.encrypted_data = cpabe_encrypt(pk, node.policy,data_to_encrypt.encode("utf-8"))
+
         for child in node.children:
             if apply_to_all_fields:
                 child.policy = apply_to_all_fields  # Set the  inherited policy
             else:
-                child.policy = self.get_policy_for_field_node(node.metadata_type_name,child.field_name.lower()) #set specific field policy
+                child.policy = self.get_policy_for_field_node(node.identifier_field,child.field_name.lower()) #set specific field policy
             child.accept(self)  # Visit each child
     
     def visit_sbom_node(self, node: SbomNode):
@@ -397,26 +413,30 @@ def cpabe(data):
 def build_sbom_tree(parser:SBOMParser):
     """Builds a SBOM tree from an SBOM.""" 
     leaves = []
-    #create internal nodes for each field
-    document_info=parser.get_document()
-    for field_name, field_value in document_info.items():
-#        print(f"Field{field_name}{field_value}")
-        if not field_name.startswith('_'):
-            leaves.append(FieldNode(field_name,field_value))
-
-    # Create internal nodes for each package
-    pkgs=parser.get_packages()
     root_children = []
 
-    for package in pkgs:
-        # Extract fields for each package
-        package_fields: List[FieldNode] = [
-            FieldNode(key,value)
-            for key, value in package.items()
-            if not key.startswith('_')  # Exclude internal attributes 
-        ]
-        root_children.append(ComplexNode("Package",package["name"], package_fields))
+    #create internal node for document information
+    document_info=parser.get_document()
+    doc_fields: List[FieldNode] = [
+    FieldNode(key,value)
+    for key, value in document_info.items()
+    if not key.startswith('_')  # Exclude internal attributes 
+    ]
+    root_children.append(ComplexNode("Document Information","name",document_info["name"], doc_fields))
+    
+    # Create internal node for each package
+    pkgs=parser.get_packages()
+    if(pkgs):
+        for package in pkgs:
+            # Extract fields for each package
+            package_fields: List[FieldNode] = [
+                FieldNode(key,value)
+                for key, value in package.items()
+                if not key.startswith('_')  # Exclude internal attributes 
+            ]
+            root_children.append(ComplexNode("Package","name",package["name"], package_fields))
 
+    # Create internal node for each file
     files=parser.get_files()
     if(files):
         for file in files:
@@ -426,8 +446,9 @@ def build_sbom_tree(parser:SBOMParser):
                 for key, value in file.items()
                 if not key.startswith('_')  # Exclude internal attributes
             ]
-            root_children.append(ComplexNode("File",file["name"], file_fields))
-        
+            root_children.append(ComplexNode("File","name",file["name"], file_fields))
+    
+    # Create internal node for each license        
     licenses=parser.get_licenses()
     if (licenses):
         for license in licenses:
@@ -437,8 +458,9 @@ def build_sbom_tree(parser:SBOMParser):
                 for key, value in license.items()
                 if not key.startswith('_')   # Exclude internal attributes
             ]
-            root_children.append(ComplexNode("License",license["name"], license_fields))
+            root_children.append(ComplexNode("License","name",license["name"], license_fields))
 
+    # Create internal node for each vulnerability
     vulnerabilities=parser.get_vulnerabilities()
     if (vulnerabilities):
         for vulnerability in vulnerabilities:
@@ -448,8 +470,9 @@ def build_sbom_tree(parser:SBOMParser):
                 for key, value in vulnerability.items()
                 if not key.startswith('_') # Exclude internal attributes
             ]
-            root_children.append(ComplexNode("Vulnerability",vulnerability["product"], vulnerability_fields))
+            root_children.append(ComplexNode("Vulnerability","product",vulnerability["product"], vulnerability_fields))
 
+    # Create internal node for each relationship
     relationships=parser.get_relationships()
     if (relationships):
         for relationship in relationships:
@@ -459,8 +482,9 @@ def build_sbom_tree(parser:SBOMParser):
                 for key, value in relationship.items()
                 if not key.startswith('_')  # Exclude internal attributes 
             ]
-            root_children.append(ComplexNode("Relationship",relationship["type"], relationship_fields))
+            root_children.append(ComplexNode("Relationship","type",relationship["type"], relationship_fields))
 
+    # Create internal node for each service
     services=parser.get_services()
     if(services):
         for service in services:
@@ -470,7 +494,7 @@ def build_sbom_tree(parser:SBOMParser):
                 for key, value in service.items()
                 if not key.startswith('_')  # Exclude internal attributes
             ]
-            root_children.append(ComplexNode("Service",service["name"], service_fields))
+            root_children.append(ComplexNode("Service","name",service["name"], service_fields))
 
     sbom_name=parser.get_document()["name"]
     pURL=""
