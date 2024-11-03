@@ -506,6 +506,6 @@ def build_sbom_tree(parser:SBOMParser):
 
     sbom_name=parser.get_document()["name"]
     pURL=""
-    root = SbomNode(sbom_name,pURL,leaves + root_children)
+    root = SbomNode(sbom_name,pURL, root_children)
     #ToDo store sign (root) , hash (root), and the tree in the database
     return root
