@@ -1,7 +1,7 @@
 # This policy defines access control over sbom data to ensure only authorized users can view sensitive information.
 # The policy maker's intention is to restrict the access to information that might cause intellectual property leakage of the software artifact that the SBOM describes.
-# To achive this, the policy restricts access to all to all dependencies information.
-# Atribute types/catagories are: User Role, department , Audit Authorization.
+# To achieve this, the policy restricts access to all dependencies information.
+# Attribute types/categories are: User Role, department , Audit Authorization.
 
 # Policy Definition
 # ..................
