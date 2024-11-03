@@ -75,6 +75,23 @@ git submodule update --init
 
 ## Petra Usage
 
+### Configuration
+
+We provide a simple configuration template for Petra in `config/petra.conf.template`. To provide your own configuration,
+point the Petra CLI to your file:
+
+```
+from petra.lib.util import config.Config
+
+conf = Config(<path to my config>)
+```
+
+**TODO**: Pass config file path as CLI arg.
+
+We also provide the following example configurations:
+
+* `config/bom-only.conf`: a short list of SBOMs to ingest into Petra
+
 ### Tests
 
 After the setup, you should be able to run the Petra CLI by running the test files under `/tests`.
