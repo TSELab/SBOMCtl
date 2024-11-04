@@ -5,7 +5,7 @@ components for trustworthy software supply chain infrastructure.
 
 ## Contents
 
-This repo hosts the following sub-projects:
+This repo hosts the following prototype reference implementations:
 
 * `privateSBOMExchange`: a system for privacy-preserving SBOMs
 
