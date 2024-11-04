@@ -61,7 +61,7 @@ Petra is the main system. If cpabe is installed, you should be able to
 install the petra package:
 
 ```
-cd petra
+cd privateSBOMExchange
 pip install -e .
 ```
 
@@ -70,6 +70,7 @@ pip install -e .
 The final setup step pulls SBOM datasets from linked repos:
 
 ```
+cd SBOMCtl
 git submodule update --init
 ```
 
