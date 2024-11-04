@@ -1,16 +1,36 @@
+# Policy Overview
+# ...............
 # This policy defines access control over SBOM data to ensure only authorized users can view sensitive security-related information.
 # The policy maker's intention is to restrict the access to information that might reveal weaknesses of the software artifact that the SBOM describes.
-# To achive this, the policy restricts access to all vulnerability information and to the version field of all dependencies of the artifact.
-# Atribute types/catagories are: User Role, Security Clearance Level,  License Status , Audit Authorization, Tool Licensing
+
+# Access Control Details
+# .......................
+# To achieve this, the policy restricts access to all vulnerability information and the version field of all dependencies of the artifact.
+# The following attribute types/categories are considered: User Role, Security Clearance Level,  License Status , Audit Authorization, and Tool Licensing.
+
+# Petra Policy Rules Format
+# .........................
+# [category]
+# fieldname = access attributes
+# Category: The SBOM metadata type (e.g., document information, vulnerability, package).
+# Fieldname: The name of the SBOM field under the specified category.
+# Access Attributes: The set of attributes a user must possess to access a specific field within the specified category.
+
+# Access Control
+# ..............
+# Petra will grant access to the field specified by fieldname under the defined category only to users who meet the required access attributes.
+# All fields not covered by rules in the policy will have an open access policy.
 
 # Policy Definition
-# ..................
-# Personnel/organizations/ or tool who can view the above data must hold one of the following attribute combinations:
-# Rule 1 : Government Agency with security clearance Level of confidential
-# Rule 2 : Officially licensed and FedRAMP approved vulnerability scanners
-# Rule 3 : Auditor and with audit authorization status of approved
-# Rule 4 : Authorized personnel with a role of Security Analyst, with security clearance level of confidential
-# ...................
+# .................
+Personnel, organizations, or tools that can view the above data must hold one of the following attribute combinations:
+# Rule 1: Government Agency with security clearance Level of Confidential.
+# Rule 2: Officially licensed and FedRAMP approved vulnerability scanners.
+# Rule 3: Auditor with an audit authorization status of Approved.
+# Rule 4: Authorized personnel with the role of Security Analyst and a security clearance level of Confidential.
+
+# Access Control Rules
+# ....................
 [package]
 version = ("Government Agency" and "Confidential Security Clearance Level") or ("Vulnerability Scanner" and "licensed" and "FedRAMP approved") or ("Auditor" and "Audit Authorization status of Approved") or ("Security Analyst" and "Confidential Security Clearance Level" ) 
 [vulnerability]
