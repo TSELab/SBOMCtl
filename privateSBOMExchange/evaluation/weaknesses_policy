@@ -1,17 +1,17 @@
 # This policy defines access control over SBOM data to ensure only authorized users can view sensitive security-related information.
 # The policy maker's intention is to restrict the access to information that might reveal weaknesses of the software artifact that the SBOM describes.
-# To achive this, the policy restricts access to all vulnarerbility information and to the version field of all dependencies of the artifact.
+# To achive this, the policy restricts access to all vulnerability information and to the version field of all dependencies of the artifact.
 # Atribute types/catagories are: User Role, Security Clearance Level,  License Status , Audit Authorization, Tool Licensing
 
 # Policy Definition
 # ..................
 # Personnel/organizations/ or tool who can view the above data must hold one of the following attribute combinations:
-# Rule 1 : Government Agency and with security clearance Level of confidential
+# Rule 1 : Government Agency with security clearance Level of confidential
 # Rule 2 : Officially licensed and FedRAMP approved vulnerability scanners
 # Rule 3 : Auditor and with audit authorization status of approved
 # Rule 4 : Authorized personnel with a role of Security Analyst, with security clearance level of confidential
 # ...................
 [package]
 version = ("Government Agency" and "Confidential Security Clearance Level") or ("Vulnerability Scanner" and "licensed" and "FedRAMP approved") or ("Auditor" and "Audit Authorization status of Approved") or ("Security Analyst" and "Confidential Security Clearance Level" ) 
-[vulnarerbility]
+[vulnerability]
 * = ("Government Agency" and "Confidential Security Clearance Level") or ("Vulnerability Scanner" and "licensed" and "FedRAMP approved") or ("Auditor" and "Audit Authorization status of Approved") or ("Security Analyst" and "Confidential Security Clearance Level" ) 
