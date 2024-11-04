@@ -2,11 +2,18 @@ import configparser
 from lib4sbom.parser import SBOMParser
 
 from petra.lib.models import *
+from petra.lib.util.config import Config
+
 """This tests inserting a sbom as tree ,assuming Non of the dependencies has its own sbom 
 """
+
+# get the SBOM from the basic config
+conf = Config("config/bom-only.conf")
+bom_file = conf.get_sbom_files()[0]
+
 # Parse SPDX data into a Document object
 SBOM_parser = SBOMParser()   
-SBOM_parser.parse_file("../sbom_data/bom-shelter/in-the-wild/spdx/julia.spdx.json")   
+SBOM_parser.parse_file(bom_file)   
 #SBOM_parser.parse_file("simple_sbom.json")
 # Build the tree and compute the root hash
 sbom=SBOM_parser.sbom

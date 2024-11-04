@@ -1,0 +1,11 @@
+# SBOM and CP-ABE information is optional
+
+[sbom]
+files = []
+
+[cp-abe]
+# the only requirement is that either both keys
+# or neither must be specified
+master-key = ""
+public-key = ""
+policy = ""
