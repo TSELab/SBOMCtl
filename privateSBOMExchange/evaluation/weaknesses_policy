@@ -23,7 +23,7 @@
 
 # Policy Definition
 # .................
-Personnel, organizations, or tools that can view the above data must hold one of the following attribute combinations:
+# Personnel, organizations, or tools that can view the above data must hold one of the following attribute combinations:
 # Rule 1: Government Agency with security clearance Level of Confidential.
 # Rule 2: Officially licensed and FedRAMP approved vulnerability scanners.
 # Rule 3: Auditor with an audit authorization status of Approved.
