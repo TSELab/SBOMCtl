@@ -207,7 +207,7 @@ class MerkleVisitor:
             The computed hash of the SBOM node data and its children.
         """
         children_hashes = b''.join(child.accept(self) for child in node.children)
-        data_to_hash = (node.purl).encode() + children_hashes
+        data_to_hash = (f"{node.complex_type}{node.purl}").encode() + children_hashes
         node.hash=hashlib.sha256(data_to_hash).digest()
         return node.hash 
 
