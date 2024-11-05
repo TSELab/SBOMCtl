@@ -2,134 +2,18 @@ import configparser
 from typing import List
 import re
 
-from smt.tree import TreeMemoryStore
-from smt.tree import SparseMerkleTree
-from smt.utils import DEFAULTVALUE, PLACEHOLDER
-from smt.proof import verify_proof
-from smt.tree import SparseMerkleTree
-
 import hashlib
 from lib4sbom.parser import SBOMParser
 
+from petra.lib.sbom.spdx import load_json_spdx
 from cpabe import cpabe_encrypt,cpabe_setup,cpabe_keygen,cpabe_decrypt
+
+from .sbom_tree import ComplexNode, FieldNode, SbomNode
 
 pk, mk = cpabe_setup()
 """            pt = cpabe_decrypt(sk, node.encrypted_data)
             pt_text = "".join([chr(x) for x in pt])
             assert pt_text == data_to_encrypt"""
-class Node:
-    """Base class for a node in the SBOM tree."""
-    def accept(self, visitor):
-        raise NotImplementedError("Must implement accept method.")
-
-
-class FieldNode(Node):
-    """Represents a field node that is a leaf in the tree, containing an SBOM field as a string.
-
-    Attributes
-    ----------
-    field_name : str
-        The field name stored as a string.
-    field_value : str
-        The field data stored as a string.
-    encrypted_data : bytes or None
-        The encrypted data using cpabe, initially set to None and might be set by EncryptVisitor based on the policy
-    hash: bytes or None
-        The hash of the data, initially set to None, should be set by the MerkleVisitor
-    policy: str
-        The policy associated with this field, might be set by EncryptVisitor based on the policy
-
-    """
-    def __init__(self, field:str,value:str):
-        self.field_name = field 
-        self.field_value=value 
-        self.encrypted_data:bytes=None 
-        self.hash:bytes=None 
-        self.policy:str=""
-    def accept(self, visitor):
-        return visitor.visit_field_node(self)
-
-
-class ComplexNode(Node):
-    """Represents a complex node that can have multiple children of type FieldNode.
-
-    This node represents a dependency that does not have an available SBOM tree in the database.
-
-    Attributes
-    ----------
-    field_name : str
-        "PackageName".
-    field_value :str
-        The package name.
-    encrypted_and_hashed_data : bytes or None
-        The encrypted and hashed representation of the package data, initially set to None.
-    children : List[FieldNode]
-        A list of child FieldNode instances.
-    """
-    def __init__(self, type_name:str,type_value:str, children:List[FieldNode]):
-        """Initialize a PackageNode.
-
-        Parameters
-        ----------
-        package_name : str
-            The name of the package.
-        children : List[FieldNode]
-            A list of FieldNode instances representing the fields of the package.
-        """
-        self.metadata_type_name:str= type_name  
-        self.metadata_type_value:str=type_value
-        self.encrypted_data=None #store encrypted data when visited by Encrypt visitor
-        self.hash=None #store hashed data when visited by Merkle visitor
-        self.children = children
-
-    def accept(self, visitor):
-        return visitor.visit_complex_node(self)
-
-
-class SbomNode(Node):
-    """Represents the root node of a Software Bill of Materials (SBOM) tree.
-
-    This node can have three types of children, all of which are derived from the Node class:
-    1. **FieldNode**: Represents a field in an SBOM document.
-    2. **ComplexNode**: Represents a complex node that has multiple children.
-    3. **SbomNode**: Represents a package dependency that does have an available SBOM tree in the database.
-
-    Attributes
-    ----------
-    SBOM_name : str
-        The name or identifier of the SBOM.
-    encrypted_data : bytes or None
-        The encrypted data using cpabe, initially set to None and might be set by EncryptVisitor based on the policy
-    hash: bytes or None
-        The hash of the data, initially set to None, should be set by the MerkleVisitor
-    children : List[Node]
-        A list of child nodes, which can be FieldNode, PackageNode, or other SbomNode instances.
-    signature : 
-        signature over the hash, signed by the generator
-    purl : str
-        package url 
-    """
-    def __init__(self,name:str,purl, children:List[Node]):
-        """Initialize an SbomNode.
-
-        Parameters
-        ----------
-        name : str
-            The name of the SBOM.
-        purl : str
-            package url for the sbom artifact
-        children : List[Node]
-            A list of child nodes that can be FieldNode, PackageNode, or other SbomNode instances.
-        """
-        self.SBOM_name=name
-        self.encrypted_data=None 
-        self.hash=None
-        self.children = children 
-        self.signature=None
-        self.purl:str=purl
-    def accept(self, visitor):
-        # Accept the visitor on the root node and then on all children
-        return visitor.visit_sbom_node(self)
 
   
 class MerkleVisitor:
@@ -208,34 +92,6 @@ class MerkleVisitor:
         node.hash=hashlib.sha256(data_to_hash).digest()
         return node.hash 
 
-
-class PrintVisitor:
-    """Visitor that prints the data and hash of each node."""
-    def visit_field_node(self, node:FieldNode):
-        print(f"Field:{node.field_name}:{node.field_value}")
-        try:
-            print(f"Hash: {node.hash.hex()}")
-        except AttributeError:
-            print("Hashes have not been calculated, you need to first visit the tree using the Merkle Visitor")
-
-    def visit_complex_node(self, node:ComplexNode):
-        print(f"{node.metadata_type_name}:{node.metadata_type_value}") 
-        try:
-            print(f"Hash: {node.hash.hex()}")
-        except AttributeError:
-            print("Hashes have not been calculated, you need to first visit the tree using the Merkle Visitor")
-
-        for child in node.children:
-            child.accept(self)
-            
-    def visit_sbom_node(self, node:SbomNode):
-        print(f"SBOM: {node.SBOM_name}") 
-        try:
-            print(f"Hash: {node.hash.hex()}")
-        except AttributeError:
-            print("Hashes have not been calculated, you need to first visit the tree using the Merkle Visitor")
-        for child in node.children:
-            child.accept(self)        
 
 
 class EncryptVisitor:
@@ -393,7 +249,56 @@ def cpabe(data):
     else:
         return data
 
-       
+   
+def recurse_into_sbom_subtree(target, key=None):
+
+    # we may for some reason end up without a key
+    # this would break our scheme in the complex node case
+    # so we fail if that's the case.
+    if not key and key != "":
+        raise Exception("I failed trying to parse {}".format(target))
+
+    # we should probably work on a tuple too...
+    if type(target) == dict:
+        thisnode = ComplexNode(key, [])
+
+        for key in target:
+            child = recurse_into_sbom_subtree(target[key], key)
+            thisnode.children.append(child)
+
+    elif type(target) == list:
+        thisnode = ComplexNode(key, [])
+
+        for value in target:
+            child = recurse_into_sbom_subtree(value, "")
+            thisnode.children.append(child)
+    else: # basecase
+        thisnode = FieldNode(key, target)
+
+    return thisnode
+
+def build_sbom_tree_from_file(filename:str, _format:str="spdx:json"):
+
+    SUPPORTED_FORMATS = {
+        "spdx:json": load_json_spdx
+    }
+
+    if _format not in SUPPORTED_FORMATS:
+        raise Exception(f"Format {_format} is not supported, supported formats:\n{SUPPORTED_FORMATS}")
+
+
+    target = SUPPORTED_FORMATS[_format](filename)
+
+    root = SbomNode(target['name'], None, [])
+
+    for key in target:
+        if key == 'name':
+            continue
+        node = recurse_into_sbom_subtree(target[key], key)
+        root.children.append(node)
+   
+    return root
+
 def build_sbom_tree(parser:SBOMParser):
     """Builds a SBOM tree from an SBOM.""" 
     leaves = []

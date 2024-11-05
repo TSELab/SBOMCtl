@@ -1,0 +1,50 @@
+{
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "name": "kustomizer_2.1.0_source_code.tar.gz",
+  "spdxVersion": "SPDX-2.2",
+  "creationInfo": {
+    "created": "2022-02-12T09:04:51.19697641Z",
+    "creators": [
+      "Organization: Anchore, Inc",
+      "Tool: syft-0.37.10"
+    ],
+    "licenseListVersion": "3.16"
+  },
+  "dataLicense": "CC0-1.0",
+  "documentNamespace": "https://anchore.com/syft/file/kustomizer_2.1.0_source_code.tar.gz-130da257-4bce-4cfb-88cc-868d3e3b1bbd",
+  "packages": [
+    {
+      "SPDXID": "SPDXRef-9f3ae5324b95176b",
+      "name": "cloud.google.com/go",
+      "licenseConcluded": "NONE",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:golang/cloud.google.com/go@v0.99.0",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseDeclared": "NONE",
+      "sourceInfo": "acquired package info from go module information: go.mod",
+      "versionInfo": "v0.99.0"
+    }
+  ],
+  "files": [
+    {
+      "SPDXID": "SPDXRef-50f407f0ce01b5bb",
+      "licenseConcluded": "NOASSERTION",
+      "checksums": [
+        {
+          "algorithm": "sha256",
+          "checksumValue": "268f24ff065215106a71759337086a8a0f177e897b2535bdf08787f882577719"
+        }
+      ],
+      "fileName": ".codecov.yml",
+      "fileTypes": [
+        "TEXT"
+      ]
+    }
+  ]
+}

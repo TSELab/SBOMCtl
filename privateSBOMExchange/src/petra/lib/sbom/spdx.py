@@ -1,5 +1,19 @@
 import json 
 
+def load_json_spdx(filename):
+    """
+    Load an SPDX JSON SBOM into a dictionary
+
+    Args:
+        filename (str): a path to where the SBOM file location is
+
+    Returns:
+        dict: a complex dictionary represented the loaded json
+    """
+    with open(filename) as fp:
+        return json.load(fp)
+    return None
+
 def flatten_data(input):
     """
     Flatten a nested dictionary or list into a single-level dictionary.
