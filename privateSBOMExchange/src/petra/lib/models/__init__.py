@@ -268,6 +268,7 @@ class SbomNode(Node):
 
         return n
 
+    
 class MerkleVisitor:
     """Visitor that computes the hash of the data in the nodes."""
     def visit_field_node(self, node:FieldNode):
@@ -468,6 +469,44 @@ class EncryptVisitor:
                 policies[(section.lower(), option.lower())] = config.get(section, option)
 
         return policies
+
+class DecryptVisitor:
+    """Visitor that deccrypts the data in the nodes based on secret key attributes."""
+    def __init__(self, secret_key):
+        # TODO: Get user's secret key from database
+        self.secret_key = secret_key
+
+    def visit_field_node(self, node: FieldNode):
+        """Visit a FieldNode and decrypt its encrypted data using the secret key
+        Parameters
+        ----------
+        node : FieldNode
+            The field node whose ciphertext will be decrypted.
+        """
+        if node.encrypted_data is not None:
+            try:
+                node.plaintext = cpabe_decrypt(self.secret_key, node.encrypted_data)
+            except Exception as e:
+                print(f"Decryption failed with error: {e}")
+            # plaintext =  "".join([chr(x) for x in node.plaintext])
+            # print(f"Plaintext: {plaintext}")
+        else:
+            print(f"No encrypted data found for FieldNode '{node.field_name}'.")
+
+    def visit_complex_node(self, node:ComplexNode):
+        """Encrypt the data for a ComplexNode and assign policies to its children."""       
+        for child in node.children:
+            if child.encrypted_data is not None:
+                try:
+                    child.plaintext = cpabe_decrypt(self.secret_key , child.encrypted_data)
+                except Exception as e:
+                    print(f"Decryption failed with error: {e}")
+            child.accept(self)  
+
+    def visit_sbom_node(self, node: SbomNode):
+        for child in node.children:
+            child.accept(self)
+
      
 #represent SBOM in file as Merkle tree
 def SBOM_as_tree(flatten_SBOM_data,sbom_file_encoding):
@@ -646,3 +685,140 @@ def build_sbom_tree(parser:SBOMParser):
     return root
 
 
+class GetTargetNodes:
+    """Visitor that collects the data and hash of each node.
+    This is used to test for membership"""
+
+    def __init__(self):
+        # Initialize a list to store the hashes of visited nodes
+        self.hashes = []
+
+    def visit_field_node(self, node):
+        # Append the hash if it exists, otherwise raise error
+        try:
+            node_hash = node.hash.hex()
+            self.hashes.append(node_hash)
+        except AttributeError:
+            raise AttributeError("Hashes have not been calculated; please visit the tree using the Merkle Visitor.")
+
+    def visit_complex_node(self, node):
+        # Add the complex node's hash, if available
+        try:
+            node_hash = node.hash.hex()
+            self.hashes.append(node_hash)
+        except AttributeError:
+            raise AttributeError("Hashes have not been calculated; please visit the tree using the Merkle Visitor.")
+
+    def visit_sbom_node(self, node):
+        # Add the SBOM node's hash, if available, and visit children
+        try:
+            node_hash = node.hash.hex()
+            self.hashes.append(node_hash)
+        except AttributeError:
+            raise AttributeError("Hashes have not been calculated; please visit the tree using the Merkle Visitor.")
+
+        # Visit each child node
+        for child in node.children:
+            child.accept(self)
+
+    def get_hashes(self):
+        """
+        Returns the collected hashes to the caller.
+        Call this after the tree traversal is complete.
+        """
+        return self.hashes
+
+
+def get_membership_proof(root, target_hash):
+    """
+    Generate a membership proof for a target hash within an SBOM tree.
+
+    Parameters:
+    root: The SBOM tree instance.
+    target_hash (str or bytes): The hash of the target item to locate in the tree.
+
+    Returns:
+    list: A list representing the path taken to locate the target hash in the tree.
+          If the root node itself matches the target hash, returns an empty path.
+
+    Raises:
+    Exception: If the root is not an instance of the expected SbomNode class.
+    """
+    target_hash = target_hash.hex() if isinstance(target_hash, bytes) else target_hash
+
+    def traverse(node, path):
+        """
+        Recursively traverse the tree from a given node to find the target hash.
+
+        Parameters:
+        node (SbomNode): The current node being traversed.
+        path (list): The path recorded up to the current node.
+
+        Returns:
+        list or None: If the target hash is found, returns the path to it;
+                      otherwise, returns None.
+        """
+        for child in node.children:
+            if child.hash.hex() == target_hash:
+                sub_path = b''.join(sibling.hash for sibling in root.children)
+                return path + [(node.SBOM_name.encode() + sub_path)] 
+
+            # If the child is a complex node, recurse into it
+            if isinstance(child, SbomNode) or isinstance(child, SbomNode):
+                traverse(child, path + [(node.hash)])
+        return None 
+
+    # Start traversal from the root node
+    print("Starting traversal from root")
+    path = []
+    if isinstance(root, SbomNode):
+        if root.hash.hex() == target_hash:
+            return path  # Return an empty path as it is the root
+
+        # Check the children of the root node
+        for i, child in enumerate(root.children):
+            if child.hash  == bytes.fromhex(target_hash):
+                sub_path = b''.join(sibling.hash for sibling in root.children)
+                return path + [(root.SBOM_name.encode() + sub_path)] 
+
+            if isinstance(child, SbomNode):
+                traverse(child, path + [left_sibling.hash for left_sibling in root.children])
+                traverse(child, path + [(root.hash)])
+    else:
+        raise Exception(f"{root} must be Sbom Tree")
+
+    
+def verify_membership_proof(root_hash, target_hash, proof):
+    """
+    Verify the membership proof for a target hash within an SBOM tree.
+
+    It checks if the target hash is part of the tree by using a proof path
+    to iteratively construct and hash the path until reaching the expected root hash.
+
+    Parameters:
+    root_hash (str or bytes): The hash of the root node of the SBOM tree.
+    target_hash (str or bytes): The hash of the target item being verified.
+    proof (list of bytes): A list of hashes representing the proof path from the target
+
+    Returns:
+    bool: True if the constructed path matches the root hash, confirming membership; 
+          False otherwise.
+    """
+
+    root_hash = root_hash if isinstance(root_hash, bytes) else bytes.fromhex(root_hash)
+    target_hash = target_hash if isinstance(target_hash, bytes) else bytes.fromhex(target_hash)
+    found_path = b''
+
+    if target_hash == root_hash:
+        return True
+    
+    if proof is None:
+        return False
+    
+    for path in proof:
+
+        found_path = found_path + path
+        # hash the updated path
+        found_path = hashlib.sha256(found_path).digest()
+    
+    return found_path == root_hash
