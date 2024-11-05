@@ -9,3 +9,6 @@
 **/*priv_key
 #Ignore database
 *.db
+build/
+__pycache__
+*.egg-info

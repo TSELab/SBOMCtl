@@ -31,4 +31,8 @@ merkle_visitor = MerkleVisitor()
 merkle_root_hash = sbom_tree.accept(merkle_visitor)
 # Convert the root hash to a hexadecimal representation for display
 merkle_root_hash_hex = merkle_root_hash.hex()
+
+print("Printing hashed and encrypted SBOM tree")
+sbom_tree.accept(print_visitor)
+
 print("Merkle Root Hash for SBOM:", merkle_root_hash_hex)
