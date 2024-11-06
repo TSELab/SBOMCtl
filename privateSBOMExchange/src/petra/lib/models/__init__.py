@@ -13,9 +13,13 @@ from lib4sbom.parser import SBOMParser
 
 from cpabe import cpabe_encrypt,cpabe_setup,cpabe_keygen,cpabe_decrypt
 
+# node markers
 NODE_REDACTED="encrypted"
 NODE_PUBLIC="public"
-NODE_SBOM="sbom"
+
+NODE_FIELD="F"
+NODE_COMPLEX="C"
+NODE_SBOM="S"
 
 # TODO: move this out of here
 pk, mk = cpabe_setup()
@@ -63,6 +67,20 @@ class FieldNode(Node):
     def accept(self, visitor):
         return visitor.visit_field_node(self)
 
+    def to_dict(self) -> dict:
+        """ Serializes the node into a dict that can be
+            passed to a JSON or other format.
+        """
+        node_dict = dict()
+
+        node_dict['t'] = NODE_FIELD
+        node_dict['name'] = self.field_name
+        node_dict['value'] = self.field_value
+        node_dict['encrypted_data'] = self.encrypted_data
+        node_dict['policy'] = self.policy
+        node_dict['hash'] = self.hash.hex()
+
+        return node_dict
 
 class ComplexNode(Node):
     """Represents a complex node that can have multiple children of type FieldNode.
@@ -95,6 +113,25 @@ class ComplexNode(Node):
     def accept(self, visitor):
         return visitor.visit_complex_node(self)
 
+    def to_dict(self) -> dict:
+        """ Serializes the node into a dict that can be
+            passed to a JSON or other format.
+        """
+        node_dict = dict()
+
+        node_dict['t'] = NODE_COMPLEX
+        node_dict['type'] = self.complex_type
+        node_dict['encrypted_data'] = self.encrypted_data
+        node_dict['policy'] = self.policy
+        node_dict['hash'] = self.hash.hex()
+
+        children = dict()
+        for c in self.children:
+            children[c.hash.hex()[:7]] = c.to_dict()
+
+        node_dict['children'] = children
+
+        return node_dict
 
 class SbomNode(Node):
     """Represents the root node of a Software Bill of Materials (SBOM) tree.
@@ -124,7 +161,6 @@ class SbomNode(Node):
         children : List[Node]
             A list of child nodes that can be FieldNode, PackageNode, or other SbomNode instances.
         """
-        self.complex_type = NODE_SBOM
         self.purl:str=purl
         self.children = children
         self.hash=None
@@ -134,6 +170,28 @@ class SbomNode(Node):
         # Accept the visitor on the root node and then on all children
         return visitor.visit_sbom_node(self)
 
+    def to_dict(self) -> dict:
+        """ Serializes the node into a dict that can be
+            passed to a JSON or other format.
+        """
+        node_dict = dict()
+
+        node_dict['t'] = NODE_SBOM
+        node_dict['purl'] = self.purl
+        node_dict['hash'] = self.hash.hex()
+
+        if self.signature:
+            node_dict['signature'] = self.signature.hex()
+        else:
+            node_dict['signature'] = ""
+
+        children = dict()
+        for c in self.children:
+            children[c.hash.hex()[:7]] = c.to_dict()
+
+        node_dict['children'] = children
+
+        return node_dict
 
 class MerkleVisitor:
     """Visitor that computes the hash of the data in the nodes."""
@@ -207,7 +265,7 @@ class MerkleVisitor:
             The computed hash of the SBOM node data and its children.
         """
         children_hashes = b''.join(child.accept(self) for child in node.children)
-        data_to_hash = (f"{node.complex_type}{node.purl}").encode() + children_hashes
+        data_to_hash = (f"{node.purl}").encode() + children_hashes
         node.hash=hashlib.sha256(data_to_hash).digest()
         return node.hash 
 
@@ -335,7 +393,6 @@ class EncryptVisitor:
                 policies[(section.lower(), option.lower())] = config.get(section, option)
 
         return policies
-    
      
 #represent SBOM in file as Merkle tree
 def SBOM_as_tree(flatten_SBOM_data,sbom_file_encoding):
@@ -512,3 +569,5 @@ def build_sbom_tree(parser:SBOMParser):
     root = SbomNode(pURL, root_children)
     #ToDo store sign (root) , hash (root), and the tree in the database
     return root
+
+
