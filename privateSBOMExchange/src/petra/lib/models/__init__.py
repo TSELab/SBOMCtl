@@ -23,9 +23,6 @@ NODE_FIELD="F"
 NODE_COMPLEX="C"
 NODE_SBOM="S"
 
-# TODO: move this out of here
-pk, mk = cpabe_setup()
-
 
 class Node:
     """Base class for a node in the SBOM tree."""
@@ -349,41 +346,57 @@ class MerkleVisitor:
 class PrintVisitor:
     """Visitor that prints the data and hash of each node."""
     def visit_field_node(self, node:FieldNode):
-        print(f"{node.encrypted_data};{node.field_name}:{node.field_value};{node.policy}")
+        log(f"{node.encrypted_data};{node.field_name}:{node.field_value};{node.policy}")
 
         try:
-            print(f"Hash: {node.hash.hex()}")
+            log(f"Hash: {node.hash.hex()}")
         except AttributeError:
             pass
-            #print("Hashes have not been calculated, you need to first visit the tree using the Merkle Visitor")
+            #log("Hashes have not been calculated, you need to first visit the tree using the Merkle Visitor")
 
     def visit_complex_node(self, node:ComplexNode):
-        print(f"{node.encrypted_data};{node.complex_type};{node.policy}") 
+        log(f"{node.encrypted_data};{node.complex_type};{node.policy}") 
         try:
-            print(f"Hash: {node.hash.hex()}")
+            log(f"Hash: {node.hash.hex()}")
         except AttributeError:
             pass
-            #print("Hashes have not been calculated, you need to first visit the tree using the Merkle Visitor")
+            #log("Hashes have not been calculated, you need to first visit the tree using the Merkle Visitor")
 
         for child in node.children:
             child.accept(self)
             
     def visit_sbom_node(self, node:SbomNode):
-        print(f"SBOM: {node.purl}") 
+        log(f"SBOM: {node.purl}") 
         try:
-            print(f"Hash: {node.hash.hex()}")
+            log(f"Hash: {node.hash.hex()}")
         except AttributeError:
             pass
-            #print("Hashes have not been calculated, you need to first visit the tree using the Merkle Visitor")
+            #log("Hashes have not been calculated, you need to first visit the tree using the Merkle Visitor")
             
+        for child in node.children:
+            child.accept(self)        
+
+
+class PrintFieldNode:
+    """Visitor that prints the data and hash of each node."""
+    def visit_field_node(self, node:FieldNode):
+        log(f"{node.field_name}:{node.field_value}")
+
+    def visit_complex_node(self, node:ComplexNode):
+        for child in node.children:
+            child.accept(self)
+            
+    def visit_sbom_node(self, node:SbomNode):
+        log(f"SBOM: {node.purl}") 
         for child in node.children:
             child.accept(self)        
 
 
 class EncryptVisitor:
     """Visitor that encrypts the data in the nodes based on policies."""
-    def __init__(self, policy_file):
-        self.policies = self.load_policies(policy_file)
+    def __init__(self, pk, policy_file):
+        self.policy = self.load_policies(policy_file)
+        self.pk = pk
 
     def visit_field_node(self, node: FieldNode):
         """Visit a FieldNode and encrypt its data using cpabe
@@ -394,11 +407,13 @@ class EncryptVisitor:
         node : FieldNode
             The field node whose data will be hashed.
         """
-        data_to_encrypt=f"{node.field_name}{node.field_value}"
+        # ;;; is the delimiter to allow DecryptVisitor reassign field_name and field_value
+        # TODO: handle better 
+        data_to_encrypt=f"{node.field_name};;;{node.field_value}"
         #if parent node(complex node) found policy for this node, encrypt the data using it and erase field node data
         if node.policy:
-            print(f"policy found for FieldNode {node.field_name}, {node.policy}.")
-            node.encrypted_data = cpabe_encrypt(pk, node.policy, data_to_encrypt.encode("utf-8"))
+            log(f"policy found for FieldNode {node.field_name}, {node.policy}.")
+            node.encrypted_data = cpabe_encrypt(self.pk, node.policy, data_to_encrypt.encode("utf-8"))
             node.field_name=NODE_REDACTED
             node.field_value=NODE_REDACTED
 
@@ -420,9 +435,9 @@ class EncryptVisitor:
             node.policy=apply_to_all_fields
         
         if node.policy:
-            node.encrypted_data = cpabe_encrypt(pk, node.policy,data_to_encrypt.encode("utf-8"))
+            node.encrypted_data = cpabe_encrypt(self.pk, node.policy,data_to_encrypt.encode("utf-8"))  
             node.complex_type=NODE_REDACTED
-            print(f"policy found for ComplexNode {node.complex_type} , {node.policy}")
+            log(f"policy found for ComplexNode {node.complex_type} , {node.policy}")
 
         for child in node.children:
             if apply_to_all_fields:
@@ -430,10 +445,10 @@ class EncryptVisitor:
             else:
                 child.policy = self.get_policy_for_field_node(node.complex_type,child.field_name) #set specific field policy
             child.accept(self)  # Visit each child
-    
+
     def visit_sbom_node(self, node: SbomNode):
         """Visit an SbomNode and accept its children without encrypting."""
-        print(f"Visiting SbomNode '{node.purl}', accepting children.")
+        log(f"Visiting SbomNode '{node.purl}', accepting children.")
         
         # Accept all child nodes without encryption
         for child in node.children:
@@ -446,7 +461,7 @@ class EncryptVisitor:
         parent_type_lower= parent_type.lower()
         
         # Check for specific field policies
-        specific_policy = self.policies.get((parent_type_lower, field_name_lower))
+        specific_policy = self.policy.get((parent_type_lower, field_name_lower))
 
         if specific_policy == None:
             return ""
@@ -456,7 +471,7 @@ class EncryptVisitor:
     # msm: shouldn't to_redact_field be a list?
     def get_policy_for_complex_node(self, complex_node_type, to_redact_field):
         """Get the policy for a ComplexNode based on its metadata type name, case-insensitive."""
-        return self.policies.get((complex_node_type.lower(), to_redact_field.lower()))
+        return self.policy.get((complex_node_type.lower(), to_redact_field.lower()))
     
     def load_policies(self, policy_file):
         """Load policies from the given INI file into a dictionary, supporting general and specific cases."""
@@ -471,7 +486,7 @@ class EncryptVisitor:
         return policies
 
 class DecryptVisitor:
-    """Visitor that deccrypts the data in the nodes based on secret key attributes."""
+    """Visitor that decrypts the data in the nodes based on secret key attributes."""
     def __init__(self, secret_key):
         # TODO: Get user's secret key from database
         self.secret_key = secret_key
@@ -483,29 +498,25 @@ class DecryptVisitor:
         node : FieldNode
             The field node whose ciphertext will be decrypted.
         """
-        if node.encrypted_data is not None:
+        if node.encrypted_data != NODE_PUBLIC:
             try:
-                node.plaintext = cpabe_decrypt(self.secret_key, node.encrypted_data)
+                plaintext = cpabe_decrypt(self.secret_key, node.encrypted_data)
+                plaintext =  "".join([chr(x) for x in plaintext])
+                node.field_name, node.field_value = plaintext.split(";;;", 1)
             except Exception as e:
-                print(f"Decryption failed with error: {e}")
-            # plaintext =  "".join([chr(x) for x in node.plaintext])
-            # print(f"Plaintext: {plaintext}")
+                log(f"Decryption failed with error: {e}")
         else:
-            print(f"No encrypted data found for FieldNode '{node.field_name}'.")
+            log(f"No encrypted data found for FieldNode '{node.field_name}'.")
 
     def visit_complex_node(self, node:ComplexNode):
-        """Encrypt the data for a ComplexNode and assign policies to its children."""       
+        """Encrypt the data for a ComplexNode and assign policies to its children."""   
         for child in node.children:
-            if child.encrypted_data is not None:
-                try:
-                    child.plaintext = cpabe_decrypt(self.secret_key , child.encrypted_data)
-                except Exception as e:
-                    print(f"Decryption failed with error: {e}")
             child.accept(self)  
 
-    def visit_sbom_node(self, node: SbomNode):
+    def visit_sbom_node(self, node: SbomNode):   
         for child in node.children:
             child.accept(self)
+        del self.secret_key
 
      
 #represent SBOM in file as Merkle tree
@@ -530,7 +541,7 @@ def SBOM_as_tree(flatten_SBOM_data,sbom_file_encoding):
                 assert root_after_update != PLACEHOLDER, "Root cannot be a placeholder."
                 assert DEFAULTVALUE == tree.get(b""), "Tree must return default value for an empty key."
             except Exception as e:
-                print(f"Error updating tree with {item}: {e}")
+                log(f"Error updating tree with {item}: {e}")
     return tree, tree_name
 
 
@@ -552,9 +563,9 @@ def prove(tree, SBOMFields):
             assert proof.sanity_check(), f"Sanity check failed for item: {item}"
             assert verify_proof(proof, tree.root, item, expected_value), f"Verification failed for item: {item}"
         except KeyError:
-            print(f"Field '{item}' not found in the tree.")
+            log(f"Field '{item}' not found in the tree.")
         except Exception as e:
-            print(f"An error occurred while processing '{item}': {e}")
+            log(f"An error occurred while processing '{item}': {e}")
 
 
 def tree_from_nodes(nodes, values, root):
@@ -699,15 +710,18 @@ class GetTargetNodes:
             node_hash = node.hash.hex()
             self.hashes.append(node_hash)
         except AttributeError:
-            raise AttributeError("Hashes have not been calculated; please visit the tree using the Merkle Visitor.")
-
+            pass
     def visit_complex_node(self, node):
         # Add the complex node's hash, if available
         try:
             node_hash = node.hash.hex()
             self.hashes.append(node_hash)
         except AttributeError:
-            raise AttributeError("Hashes have not been calculated; please visit the tree using the Merkle Visitor.")
+            pass
+
+        # Visit each child node
+        for child in node.children:
+            child.accept(self)
 
     def visit_sbom_node(self, node):
         # Add the SBOM node's hash, if available, and visit children
@@ -715,8 +729,7 @@ class GetTargetNodes:
             node_hash = node.hash.hex()
             self.hashes.append(node_hash)
         except AttributeError:
-            raise AttributeError("Hashes have not been calculated; please visit the tree using the Merkle Visitor.")
-
+            pass
         # Visit each child node
         for child in node.children:
             child.accept(self)
@@ -724,7 +737,7 @@ class GetTargetNodes:
     def get_hashes(self):
         """
         Returns the collected hashes to the caller.
-        Call this after the tree traversal is complete.
+        Called after the tree traversal is complete.
         """
         return self.hashes
 
@@ -822,3 +835,8 @@ def verify_membership_proof(root_hash, target_hash, proof):
         found_path = hashlib.sha256(found_path).digest()
     
     return found_path == root_hash
+
+DEBUG = False
+def log(s):
+    if DEBUG:
+        print(s)
