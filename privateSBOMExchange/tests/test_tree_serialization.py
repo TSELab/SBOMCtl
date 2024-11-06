@@ -2,7 +2,7 @@ from lib4sbom.parser import SBOMParser
 import json
 
 from petra.lib.util.config import Config
-from petra.lib.models import build_sbom_tree, MerkleVisitor
+from petra.lib.models import build_sbom_tree, MerkleVisitor, SbomNode, PrintVisitor
 from petra.lib.models.tree_ops import serialize_tree
 
 conf = Config("config/bom-only.conf")
@@ -20,4 +20,19 @@ sbom_tree = build_sbom_tree(sbom)
 merkle_visitor = MerkleVisitor()
 merkle_root_hash = sbom_tree.accept(merkle_visitor)
 
-print(json.dumps(serialize_tree(sbom_tree)))
+# serialize the tree
+json_tree = json.dumps(serialize_tree(sbom_tree))
+
+print(json_tree)
+
+# deserialize the tree
+dict_tree = json.loads(json_tree)
+
+deser_sbom_tree = SbomNode.from_dict(dict_tree)
+
+# compare hashes here
+assert merkle_root_hash.hex() == deser_sbom_tree.hash.hex()
+
+# print the deserialized tree
+print_visitor = PrintVisitor()
+deser_sbom_tree.accept(print_visitor)
