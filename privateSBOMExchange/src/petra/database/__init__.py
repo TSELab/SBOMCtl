@@ -5,7 +5,7 @@ from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, TIMES
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 
-from petra.lib.models import tree_from_nodes
+from petra.models import tree_from_nodes
 
 
 def get_session():
