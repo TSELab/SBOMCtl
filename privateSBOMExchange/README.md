@@ -82,7 +82,7 @@ We provide a simple configuration template for Petra in `config/petra.conf.templ
 point the Petra CLI to your file:
 
 ```
-from petra.lib.util import config.Config
+from petra.util.config import Config
 
 conf = Config(<path to my config>)
 ```
