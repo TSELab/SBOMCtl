@@ -16,6 +16,10 @@ class Config:
         self.cpabe_mk = ""
         self.cpabe_pk = ""
         self.cpabe_policy = ""
+        self.ip_policy = ""
+        self.weakness_policy = ""
+        self.ip_group= []
+        self.weakness_group = []
 
         # we may want to catch some exceptions here
         with open(file_path, "rb") as f:
@@ -62,6 +66,19 @@ class Config:
                 # expect the file to be encoded as a string
                 with open(policy_file_path, "r") as f:
                     self.cpabe_policy = f.read()
+        
+        # store the policy file names, if any
+        policy_info = self.config_dict.get("policy")
+        if policy_info is not None:
+            self.ip_policy = policy_info.get("ip-policy")
+            self.weakness_policy = policy_info.get("weakness-policy")
+
+        # store the CP-ABE groups, if any
+        groups = self.config_dict.get("group")
+        if groups is not None:
+            self.ip_group= groups.get("ip-group")
+            self.weakness_group = groups.get("weakness-group")
+
 
     def get_sbom_files(self) -> list:
         """ Returns the list of SBOM files to read into
@@ -94,3 +111,27 @@ class Config:
             May be empty.
         """
         return self.cpabe_policy
+    
+    def get_ip_policy(self) -> str:
+        """ Returns the IP policy as a list.
+            May be empty.
+        """
+        return self.ip_policy
+    
+    def get_weakness_policy(self) -> str:
+        """ Returns the weakness policy as a list.
+            May be empty.
+        """
+        return self.weakness_policy
+    
+    def get_ip_group(self) -> list:
+        """ Returns the CP-ABE IP group as a list.
+            May be empty.
+        """
+        return self.ip_group
+    
+    def get_weakness_group(self) -> list:
+        """ Returns the  CP-ABE weakness group as a list.
+            May be empty.
+        """
+        return self.weakness_group
