@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import configparser
 from typing import List
-import re
 
 from smt.tree import TreeMemoryStore
 from smt.tree import SparseMerkleTree
@@ -13,7 +12,7 @@ from smt.tree import SparseMerkleTree
 import hashlib
 from lib4sbom.parser import SBOMParser
 
-from cpabe import cpabe_encrypt,cpabe_setup,cpabe_keygen,cpabe_decrypt
+from cpabe import cpabe_encrypt,cpabe_decrypt
 
 # node markers
 NODE_REDACTED="encrypted"
@@ -63,7 +62,9 @@ class FieldNode(Node):
         """
         self.field_name = field
         self.field_value = value
+        self.plaintext_hash:str=""
         self.encrypted_data:str=NODE_PUBLIC
+        self.decrypted_data:str=""
         self.policy:str=""
 
     def accept(self, visitor):
@@ -78,7 +79,9 @@ class FieldNode(Node):
         node_dict['t'] = NODE_FIELD
         node_dict['name'] = self.field_name
         node_dict['value'] = self.field_value
+        node_dict['plaintext_hash'] = self.plaintext_hash
         node_dict['encrypted_data'] = self.encrypted_data
+        node_dict['decrypted_data'] = self.decrypted_data
         node_dict['policy'] = self.policy
         node_dict['hash'] = self.hash.hex()
 
@@ -95,7 +98,9 @@ class FieldNode(Node):
         
         n = FieldNode(node_dict['name'], node_dict['value'])
         n.hash = bytes.fromhex(node_dict['hash'])
+        n.plaintext_hash = node_dict['plaintext_hash']
         n.encrypted_data = node_dict['encrypted_data']
+        n.decrypted_data = node_dict['decrypted_data']
         n.policy = node_dict['policy']
 
         return n
@@ -123,7 +128,9 @@ class ComplexNode(Node):
             A list of FieldNode instances representing the fields of the package.
         """
         self.complex_type:str=complex_type
+        self.plaintext_hash:str=""
         self.encrypted_data=NODE_PUBLIC
+        self.decrypted_data:str=""
         self.children = children
         self.policy:str=""
 
@@ -138,7 +145,9 @@ class ComplexNode(Node):
 
         node_dict['t'] = NODE_COMPLEX
         node_dict['type'] = self.complex_type
+        node_dict['plaintext_hash'] = self.plaintext_hash
         node_dict['encrypted_data'] = self.encrypted_data
+        node_dict['decrypted_data'] = self.decrypted_data
         node_dict['policy'] = self.policy
         node_dict['hash'] = self.hash.hex()
 
@@ -169,7 +178,9 @@ class ComplexNode(Node):
         
         n = ComplexNode(node_dict['type'], children)
         n.hash = bytes.fromhex(node_dict['hash'])
+        n.plaintext_hash = node_dict['plaintext_hash']
         n.encrypted_data = node_dict['encrypted_data']
+        n.decrypted_data = node_dict['decrypted_data']
         n.policy = node_dict['policy']
 
         return n
@@ -342,56 +353,6 @@ class MerkleVisitor:
         node.hash=hashlib.sha256(data_to_hash).digest()
         return node.hash 
 
-
-class PrintVisitor:
-    """Visitor that prints the data and hash of each node."""
-    def visit_field_node(self, node:FieldNode):
-        log(f"{node.encrypted_data};{node.field_name}:{node.field_value};{node.policy}")
-
-        try:
-            log(f"Hash: {node.hash.hex()}")
-        except AttributeError:
-            pass
-            #log("Hashes have not been calculated, you need to first visit the tree using the Merkle Visitor")
-
-    def visit_complex_node(self, node:ComplexNode):
-        log(f"{node.encrypted_data};{node.complex_type};{node.policy}") 
-        try:
-            log(f"Hash: {node.hash.hex()}")
-        except AttributeError:
-            pass
-            #log("Hashes have not been calculated, you need to first visit the tree using the Merkle Visitor")
-
-        for child in node.children:
-            child.accept(self)
-            
-    def visit_sbom_node(self, node:SbomNode):
-        log(f"SBOM: {node.purl}") 
-        try:
-            log(f"Hash: {node.hash.hex()}")
-        except AttributeError:
-            pass
-            #log("Hashes have not been calculated, you need to first visit the tree using the Merkle Visitor")
-            
-        for child in node.children:
-            child.accept(self)        
-
-
-class PrintFieldNode:
-    """Visitor that prints the data and hash of each node."""
-    def visit_field_node(self, node:FieldNode):
-        log(f"{node.field_name}:{node.field_value}")
-
-    def visit_complex_node(self, node:ComplexNode):
-        for child in node.children:
-            child.accept(self)
-            
-    def visit_sbom_node(self, node:SbomNode):
-        log(f"SBOM: {node.purl}") 
-        for child in node.children:
-            child.accept(self)        
-
-
 class EncryptVisitor:
     """Visitor that encrypts the data in the nodes based on policies."""
     def __init__(self, pk, policy_file):
@@ -407,12 +368,10 @@ class EncryptVisitor:
         node : FieldNode
             The field node whose data will be hashed.
         """
-        # ;;; is the delimiter to allow DecryptVisitor reassign field_name and field_value
-        # TODO: handle better 
-        data_to_encrypt=f"{node.field_name};;;{node.field_value}"
+        data_to_encrypt=f"{node.field_name}{node.field_value}"
         #if parent node(complex node) found policy for this node, encrypt the data using it and erase field node data
         if node.policy:
-            log(f"policy found for FieldNode {node.field_name}, {node.policy}.")
+            print(f"policy found for FieldNode {node.field_name}, {node.policy}.")
             node.encrypted_data = cpabe_encrypt(self.pk, node.policy, data_to_encrypt.encode("utf-8"))
             node.field_name=NODE_REDACTED
             node.field_value=NODE_REDACTED
@@ -437,7 +396,7 @@ class EncryptVisitor:
         if node.policy:
             node.encrypted_data = cpabe_encrypt(self.pk, node.policy,data_to_encrypt.encode("utf-8"))  
             node.complex_type=NODE_REDACTED
-            log(f"policy found for ComplexNode {node.complex_type} , {node.policy}")
+            print(f"policy found for ComplexNode {node.complex_type} , {node.policy}")
 
         for child in node.children:
             if apply_to_all_fields:
@@ -448,7 +407,7 @@ class EncryptVisitor:
 
     def visit_sbom_node(self, node: SbomNode):
         """Visit an SbomNode and accept its children without encrypting."""
-        log(f"Visiting SbomNode '{node.purl}', accepting children.")
+        print(f"Visiting SbomNode '{node.purl}', accepting children.")
         
         # Accept all child nodes without encryption
         for child in node.children:
@@ -486,7 +445,8 @@ class EncryptVisitor:
         return policies
 
 class DecryptVisitor:
-    """Visitor that decrypts the data in the nodes based on secret key attributes."""
+    """A visitor that traverses nodes in the and decrypts encrypted data
+    in each node using the provided secret key."""
     def __init__(self, secret_key):
         # TODO: Get user's secret key from database
         self.secret_key = secret_key
@@ -500,22 +460,28 @@ class DecryptVisitor:
         """
         if node.encrypted_data != NODE_PUBLIC:
             try:
-                plaintext = cpabe_decrypt(self.secret_key, node.encrypted_data)
-                plaintext =  "".join([chr(x) for x in plaintext])
-                node.field_name, node.field_value = plaintext.split(";;;", 1)
+                decrypted_data =  "".join([chr(x) for x in cpabe_decrypt(self.secret_key, node.encrypted_data)])
+                node.decrypted_data =  hashlib.sha256(decrypted_data).digest()
+                # node.field_name, node.field_value = plaintext.split(";;;", 1)
             except Exception as e:
-                log(f"Decryption failed with error: {e}")
+                print(f"Decryption failed with error: {e}")
         else:
-            log(f"No encrypted data found for FieldNode '{node.field_name}'.")
+            print(f"No encrypted data found for FieldNode '{node.field_name}'.")
 
-    def visit_complex_node(self, node:ComplexNode):
-        """Encrypt the data for a ComplexNode and assign policies to its children."""   
+    def visit_complex_node(self, node:ComplexNode):  
+        # Visit and decrypt all child nodes.
+        if node.encrypted_data != NODE_PUBLIC:
+            decrypted_data =  "".join([chr(x) for x in cpabe_decrypt(self.secret_key, node.encrypted_data)])
+            node.decrypted_data =  hashlib.sha256(decrypted_data).digest()
+
         for child in node.children:
             child.accept(self)  
 
-    def visit_sbom_node(self, node: SbomNode):   
+    def visit_sbom_node(self, node: SbomNode): 
+        # Visit and decrypt all child nodes.  
         for child in node.children:
             child.accept(self)
+
         del self.secret_key
 
      
@@ -541,7 +507,7 @@ def SBOM_as_tree(flatten_SBOM_data,sbom_file_encoding):
                 assert root_after_update != PLACEHOLDER, "Root cannot be a placeholder."
                 assert DEFAULTVALUE == tree.get(b""), "Tree must return default value for an empty key."
             except Exception as e:
-                log(f"Error updating tree with {item}: {e}")
+                print(f"Error updating tree with {item}: {e}")
     return tree, tree_name
 
 
@@ -563,9 +529,9 @@ def prove(tree, SBOMFields):
             assert proof.sanity_check(), f"Sanity check failed for item: {item}"
             assert verify_proof(proof, tree.root, item, expected_value), f"Verification failed for item: {item}"
         except KeyError:
-            log(f"Field '{item}' not found in the tree.")
+            print(f"Field '{item}' not found in the tree.")
         except Exception as e:
-            log(f"An error occurred while processing '{item}': {e}")
+            print(f"An error occurred while processing '{item}': {e}")
 
 
 def tree_from_nodes(nodes, values, root):
@@ -694,149 +660,3 @@ def build_sbom_tree(parser:SBOMParser):
     root = SbomNode(pURL, root_children)
     #ToDo store sign (root) , hash (root), and the tree in the database
     return root
-
-
-class GetTargetNodes:
-    """Visitor that collects the data and hash of each node.
-    This is used to test for membership"""
-
-    def __init__(self):
-        # Initialize a list to store the hashes of visited nodes
-        self.hashes = []
-
-    def visit_field_node(self, node):
-        # Append the hash if it exists, otherwise raise error
-        try:
-            node_hash = node.hash.hex()
-            self.hashes.append(node_hash)
-        except AttributeError:
-            pass
-    def visit_complex_node(self, node):
-        # Add the complex node's hash, if available
-        try:
-            node_hash = node.hash.hex()
-            self.hashes.append(node_hash)
-        except AttributeError:
-            pass
-
-        # Visit each child node
-        for child in node.children:
-            child.accept(self)
-
-    def visit_sbom_node(self, node):
-        # Add the SBOM node's hash, if available, and visit children
-        try:
-            node_hash = node.hash.hex()
-            self.hashes.append(node_hash)
-        except AttributeError:
-            pass
-        # Visit each child node
-        for child in node.children:
-            child.accept(self)
-
-    def get_hashes(self):
-        """
-        Returns the collected hashes to the caller.
-        Called after the tree traversal is complete.
-        """
-        return self.hashes
-
-
-def get_membership_proof(root, target_hash):
-    """
-    Generate a membership proof for a target hash within an SBOM tree.
-
-    Parameters:
-    root: The SBOM tree instance.
-    target_hash (str or bytes): The hash of the target item to locate in the tree.
-
-    Returns:
-    list: A list representing the path taken to locate the target hash in the tree.
-          If the root node itself matches the target hash, returns an empty path.
-
-    Raises:
-    Exception: If the root is not an instance of the expected SbomNode class.
-    """
-    target_hash = target_hash.hex() if isinstance(target_hash, bytes) else target_hash
-
-    def traverse(node, path):
-        """
-        Recursively traverse the tree from a given node to find the target hash.
-
-        Parameters:
-        node (SbomNode): The current node being traversed.
-        path (list): The path recorded up to the current node.
-
-        Returns:
-        list or None: If the target hash is found, returns the path to it;
-                      otherwise, returns None.
-        """
-        for child in node.children:
-            if child.hash.hex() == target_hash:
-                sub_path = b''.join(sibling.hash for sibling in root.children)
-                return path + [(node.SBOM_name.encode() + sub_path)] 
-
-            # If the child is a complex node, recurse into it
-            if isinstance(child, SbomNode) or isinstance(child, SbomNode):
-                traverse(child, path + [(node.hash)])
-        return None 
-
-    # Start traversal from the root node
-    print("Starting traversal from root")
-    path = []
-    if isinstance(root, SbomNode):
-        if root.hash.hex() == target_hash:
-            return path  # Return an empty path as it is the root
-
-        # Check the children of the root node
-        for i, child in enumerate(root.children):
-            if child.hash  == bytes.fromhex(target_hash):
-                sub_path = b''.join(sibling.hash for sibling in root.children)
-                return path + [(root.SBOM_name.encode() + sub_path)] 
-
-            if isinstance(child, SbomNode):
-                traverse(child, path + [left_sibling.hash for left_sibling in root.children])
-                traverse(child, path + [(root.hash)])
-    else:
-        raise Exception(f"{root} must be Sbom Tree")
-
-    
-def verify_membership_proof(root_hash, target_hash, proof):
-    """
-    Verify the membership proof for a target hash within an SBOM tree.
-
-    It checks if the target hash is part of the tree by using a proof path
-    to iteratively construct and hash the path until reaching the expected root hash.
-
-    Parameters:
-    root_hash (str or bytes): The hash of the root node of the SBOM tree.
-    target_hash (str or bytes): The hash of the target item being verified.
-    proof (list of bytes): A list of hashes representing the proof path from the target
-
-    Returns:
-    bool: True if the constructed path matches the root hash, confirming membership; 
-          False otherwise.
-    """
-
-    root_hash = root_hash if isinstance(root_hash, bytes) else bytes.fromhex(root_hash)
-    target_hash = target_hash if isinstance(target_hash, bytes) else bytes.fromhex(target_hash)
-    found_path = b''
-
-    if target_hash == root_hash:
-        return True
-    
-    if proof is None:
-        return False
-    
-    for path in proof:
-
-        found_path = found_path + path
-        # hash the updated path
-        found_path = hashlib.sha256(found_path).digest()
-    
-    return found_path == root_hash
-
-DEBUG = False
-def log(s):
-    if DEBUG:
-        print(s)

@@ -16,6 +16,7 @@ class Config:
         self.cpabe_mk = ""
         self.cpabe_pk = ""
         self.cpabe_policy = ""
+        self.cpabe_group  = ""
 
         # we may want to catch some exceptions here
         with open(file_path, "rb") as f:
@@ -32,6 +33,9 @@ class Config:
 
         if cpabe_dict != None:
             # get the CP-ABE keys and policy, if any
+
+            # store the CP-ABE groups, if any
+            self.cpabe_group = cpabe_dict.get("group")
 
             # get the key paths
             master_file_path = cpabe_dict.get("master-key")
@@ -94,3 +98,9 @@ class Config:
             May be empty.
         """
         return self.cpabe_policy
+
+    def get_cpabe_group(self) -> list:
+        """ Returns the CP-ABE group as a list.
+            May be empty.
+        """
+        return self.cpabe_group
