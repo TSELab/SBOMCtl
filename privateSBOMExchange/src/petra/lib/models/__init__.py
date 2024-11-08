@@ -62,7 +62,7 @@ class FieldNode(Node):
         """
         self.field_name = field
         self.field_value = value
-        self.plaintext_hash:str=""
+        self.plaintext_hash:bytes=hashlib.sha256((f"{field}{value}").encode()).digest()
         self.encrypted_data:str=NODE_PUBLIC
         self.decrypted_data:str=""
         self.policy:str=""
@@ -128,7 +128,7 @@ class ComplexNode(Node):
             A list of FieldNode instances representing the fields of the package.
         """
         self.complex_type:str=complex_type
-        self.plaintext_hash:str=""
+        self.plaintext_hash:bytes=hashlib.sha256((f"{complex_type}").encode()).digest()
         self.encrypted_data=NODE_PUBLIC
         self.decrypted_data:str=""
         self.children = children
@@ -353,6 +353,41 @@ class MerkleVisitor:
         node.hash=hashlib.sha256(data_to_hash).digest()
         return node.hash 
 
+
+class PrintVisitor:
+    """Visitor that prints the data and hash of each node."""
+    def visit_field_node(self, node:FieldNode):
+        print(f"{node.encrypted_data};{node.field_name}:{node.field_value};{node.policy}")
+
+        try:
+            print(f"Hash: {node.hash.hex()}")
+        except AttributeError:
+            pass
+            #print("Hashes have not been calculated, you need to first visit the tree using the Merkle Visitor")
+
+    def visit_complex_node(self, node:ComplexNode):
+        print(f"{node.encrypted_data};{node.complex_type};{node.policy}") 
+        try:
+            print(f"Hash: {node.hash.hex()}")
+        except AttributeError:
+            pass
+            #print("Hashes have not been calculated, you need to first visit the tree using the Merkle Visitor")
+
+        for child in node.children:
+            child.accept(self)
+            
+    def visit_sbom_node(self, node:SbomNode):
+        print(f"SBOM: {node.purl}") 
+        try:
+            print(f"Hash: {node.hash.hex()}")
+        except AttributeError:
+            pass
+            #print("Hashes have not been calculated, you need to first visit the tree using the Merkle Visitor")
+            
+        for child in node.children:
+            child.accept(self)        
+
+
 class EncryptVisitor:
     """Visitor that encrypts the data in the nodes based on policies."""
     def __init__(self, pk, policy_file):
@@ -460,9 +495,7 @@ class DecryptVisitor:
         """
         if node.encrypted_data != NODE_PUBLIC:
             try:
-                decrypted_data =  "".join([chr(x) for x in cpabe_decrypt(self.secret_key, node.encrypted_data)])
-                node.decrypted_data =  hashlib.sha256(decrypted_data).digest()
-                # node.field_name, node.field_value = plaintext.split(";;;", 1)
+                node.decrypted_data =  "".join([chr(x) for x in cpabe_decrypt(self.secret_key, node.encrypted_data)])
             except Exception as e:
                 print(f"Decryption failed with error: {e}")
         else:
@@ -471,8 +504,7 @@ class DecryptVisitor:
     def visit_complex_node(self, node:ComplexNode):  
         # Visit and decrypt all child nodes.
         if node.encrypted_data != NODE_PUBLIC:
-            decrypted_data =  "".join([chr(x) for x in cpabe_decrypt(self.secret_key, node.encrypted_data)])
-            node.decrypted_data =  hashlib.sha256(decrypted_data).digest()
+            node.decrypted_data =  "".join([chr(x) for x in cpabe_decrypt(self.secret_key, node.encrypted_data)])
 
         for child in node.children:
             child.accept(self)  
