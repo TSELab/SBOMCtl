@@ -240,8 +240,6 @@ def verify_membership_proof(root_hash, target_hash, proofs):
     """
     Verify the membership proof for a target hash within an SBOM tree.
     """
-    def hash(to_hash):
-        return hashlib.sha256(to_hash).digest()
 
     if target_hash == root_hash:
         return True
