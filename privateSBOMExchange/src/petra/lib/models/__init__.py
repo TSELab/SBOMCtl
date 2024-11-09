@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import configparser
+import tomli
 from typing import List
 
 from smt.tree import TreeMemoryStore
@@ -80,7 +80,7 @@ class FieldNode(Node):
         node_dict['t'] = NODE_FIELD
         node_dict['name'] = self.field_name
         node_dict['value'] = self.field_value
-        node_dict['plaintext_hash'] = self.plaintext_hash
+        node_dict['plaintext_hash'] = self.plaintext_hash.hex()
         node_dict['encrypted_data'] = self.encrypted_data
         node_dict['decrypted_data'] = self.decrypted_data
         node_dict['policy'] = self.policy
@@ -149,7 +149,7 @@ class ComplexNode(Node):
 
         node_dict['t'] = NODE_COMPLEX
         node_dict['type'] = self.complex_type
-        node_dict['plaintext_hash'] = self.plaintext_hash
+        node_dict['plaintext_hash'] = self.plaintext_hash.hex()
         node_dict['encrypted_data'] = self.encrypted_data
         node_dict['decrypted_data'] = self.decrypted_data
         node_dict['policy'] = self.policy
@@ -414,7 +414,7 @@ class EncryptVisitor:
         """
         data_to_encrypt=f"{node.field_name}{node.field_value}"
         #if parent node(complex node) found policy for this node, encrypt the data using it and erase field node data
-        if node.policy:
+        if node.policy != "":
             print(f"policy found for FieldNode {node.field_name}, {node.policy}.")
             node.encrypted_data = cpabe_encrypt(self.pk, node.policy, data_to_encrypt.encode("utf-8"))
             node.field_name=NODE_REDACTED
@@ -423,30 +423,26 @@ class EncryptVisitor:
     def visit_complex_node(self, node:ComplexNode):
         """Encrypt the data for a ComplexNode and assign policies to its children."""
         data_to_encrypt=f"{node.complex_type}"
-        # Check for * policy( all fields policy ) for the complex node
-        apply_to_all_fields = self.get_policy_for_complex_node(node.complex_type,"*")
 
-        # TODO this should find the specific children that the "placeholder" attribute identifies
-        complex_node_identifier_policy_attributes=self.get_policy_for_complex_node(node.complex_type, "placeholder")
-        
-        if complex_node_identifier_policy_attributes and apply_to_all_fields:
-            node.policy= "("+apply_to_all_fields + ") or ("+complex_node_identifier_policy_attributes+")"
-        elif complex_node_identifier_policy_attributes:
-            node.policy=complex_node_identifier_policy_attributes
-        elif apply_to_all_fields:
-            node.policy=apply_to_all_fields
-        
-        if node.policy:
-            node.encrypted_data = cpabe_encrypt(self.pk, node.policy,data_to_encrypt.encode("utf-8"))  
-            node.complex_type=NODE_REDACTED
-            print(f"policy found for ComplexNode {node.complex_type} , {node.policy}")
+        node_policy = self.get_policy_for_complex_node(node.complex_type)
 
-        for child in node.children:
+        if node_policy:
+            # Check for * policy( all fields policy ) for the complex node        
+            apply_to_all_fields = node_policy.get("*")
+        
             if apply_to_all_fields:
-                child.policy = apply_to_all_fields  # Set the  inherited policy
-            else:
-                child.policy = self.get_policy_for_field_node(node.complex_type,child.field_name) #set specific field policy
-            child.accept(self)  # Visit each child
+                node.policy = apply_to_all_fields
+                node.encrypted_data = cpabe_encrypt(self.pk, node.policy, data_to_encrypt.encode("utf-8"))  
+                node.complex_type=NODE_REDACTED
+                print(f"policy found for ComplexNode {node.complex_type} , {node.policy}")
+
+            for child in node.children:
+                if apply_to_all_fields:
+                    child.policy = apply_to_all_fields  # Set the  inherited policy
+                else:
+                    child.policy = self.get_policy_for_field_node(node_policy, child.field_name) #set specific field policy
+                
+                child.accept(self)  # Visit each child
 
     def visit_sbom_node(self, node: SbomNode):
         """Visit an SbomNode and accept its children without encrypting."""
@@ -456,34 +452,28 @@ class EncryptVisitor:
         for child in node.children:
             child.accept(self)
 
-    # msm: i'm confused by the need to get the parent's policy, when the parent already has the child's
-    def get_policy_for_field_node(self, parent_type, field_name):
+    def get_policy_for_field_node(self, parent_policy: dict, field_name: str) -> str:
         """Get the policy for a FieldNode based on its name and parent node type, case-insensitive."""
         field_name_lower = field_name.lower()
-        parent_type_lower= parent_type.lower()
         
         # Check for specific field policies
-        specific_policy = self.policy.get((parent_type_lower, field_name_lower))
+        field_policy = parent_policy.get(field_name_lower)
 
-        if specific_policy == None:
+        if field_policy == None:
             return ""
         
-        return specific_policy
+        return field_policy
 
-    # msm: shouldn't to_redact_field be a list?
-    def get_policy_for_complex_node(self, complex_node_type, to_redact_field):
+    def get_policy_for_complex_node(self, complex_node_type: str) -> dict:
         """Get the policy for a ComplexNode based on its metadata type name, case-insensitive."""
-        return self.policy.get((complex_node_type.lower(), to_redact_field.lower()))
+        return self.policy.get(complex_node_type.lower())
     
     def load_policies(self, policy_file):
-        """Load policies from the given INI file into a dictionary, supporting general and specific cases."""
-        config = configparser.ConfigParser()
-        config.read(policy_file)
-        policies = {}
+        """Load policies from the given toml file into a dictionary, supporting general and specific cases."""
 
-        for section in config.sections():
-            for option in config.options(section):
-                policies[(section.lower(), option.lower())] = config.get(section, option)
+        policies = {}
+        with open(policy_file, "rb") as f:
+            policies = tomli.load(f)
 
         return policies
 
