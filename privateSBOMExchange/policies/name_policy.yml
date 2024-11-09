@@ -1,0 +1,9 @@
+# Access Control Rules
+# ....................
+[package]
+name = "compliance auditor"
+fileName = "IP owner" or ("Security Auditor" and "Audit Authorization status of Approved") or ("Security Analyst" and "works at DoD" ) 
+
+[files]
+name = "Security Auditor" and "Audit Authorization status of Approved"
+fileName = "Security Auditor" and "Audit Authorization status of Approved"

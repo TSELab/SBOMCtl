@@ -15,11 +15,8 @@ class Config:
         self.cpabe_key_files = dict()
         self.cpabe_mk = ""
         self.cpabe_pk = ""
-        self.cpabe_policy = ""
-        self.ip_policy = ""
-        self.weakness_policy = ""
-        self.ip_group= []
-        self.weakness_group = []
+        self.cpabe_policy_files = dict()
+        self.cpabe_groups = dict()
 
         # we may want to catch some exceptions here
         with open(file_path, "rb") as f:
@@ -33,6 +30,8 @@ class Config:
 
         # store the CP-ABE info, if any
         cpabe_dict = self.config_dict.get("cp-abe")
+
+        print(self.config_dict)
 
         if cpabe_dict != None:
             # get the CP-ABE keys and policy, if any
@@ -59,26 +58,19 @@ class Config:
                 # public keys to be specified
                 raise ValueError("Master or public key file path missing")
 
-            # finally, get the policy file, if any
-            policy_file_path = cpabe_dict.get("policy")
+            # get the policy files, if any
+            policy_file_dict = cpabe_dict.get("policies")
 
-            if policy_file_path != None:
-                # expect the file to be encoded as a string
-                with open(policy_file_path, "r") as f:
-                    self.cpabe_policy = f.read()
-        
-        # store the policy file names, if any
-        policy_info = self.config_dict.get("policy")
-        if policy_info is not None:
-            self.ip_policy = policy_info.get("ip-policy")
-            self.weakness_policy = policy_info.get("weakness-policy")
+            print(cpabe_dict)
+            
+            if policy_file_dict != None:
+                self.cpabe_policy_files = policy_file_dict
 
-        # store the CP-ABE groups, if any
-        groups = self.config_dict.get("group")
-        if groups is not None:
-            self.ip_group= groups.get("ip-group")
-            self.weakness_group = groups.get("weakness-group")
+            # get the CP-ABE groups, if any
+            groups_dict = cpabe_dict.get("groups")
 
+            if groups_dict != None:
+                self.cpabe_groups = groups_dict
 
     def get_sbom_files(self) -> list:
         """ Returns the list of SBOM files to read into
@@ -106,32 +98,14 @@ class Config:
         """
         return self.cpabe_pk
 
-    def get_cpabe_public_key(self) -> str:
-        """ Returns the CP-ABE policy as a string.
+    def get_cpabe_policy(self, policy_name:str) -> str:
+        """ Return a CP-ABE policy as a string.
             May be empty.
         """
-        return self.cpabe_policy
-    
-    def get_ip_policy(self) -> str:
-        """ Returns the IP policy as a list.
+        return self.cpabe_policy_files.get(policy_name)
+
+    def get_cpabe_group(self, group_name:str) -> list:
+        """ Return a CP-ABE group as a list.
             May be empty.
         """
-        return self.ip_policy
-    
-    def get_weakness_policy(self) -> str:
-        """ Returns the weakness policy as a list.
-            May be empty.
-        """
-        return self.weakness_policy
-    
-    def get_ip_group(self) -> list:
-        """ Returns the CP-ABE IP group as a list.
-            May be empty.
-        """
-        return self.ip_group
-    
-    def get_weakness_group(self) -> list:
-        """ Returns the  CP-ABE weakness group as a list.
-            May be empty.
-        """
-        return self.weakness_group
+        return self.cpabe_groups.get(group_name)

@@ -66,6 +66,7 @@ class FieldNode(Node):
         self.encrypted_data:str=NODE_PUBLIC
         self.decrypted_data:str=""
         self.policy:str=""
+        self.hash:bytes = None
 
     def accept(self, visitor):
         return visitor.visit_field_node(self)
@@ -83,7 +84,9 @@ class FieldNode(Node):
         node_dict['encrypted_data'] = self.encrypted_data
         node_dict['decrypted_data'] = self.decrypted_data
         node_dict['policy'] = self.policy
-        node_dict['hash'] = self.hash.hex()
+
+        if self.hash:
+            node_dict['hash'] = self.hash.hex()
 
         return node_dict
 
@@ -133,6 +136,7 @@ class ComplexNode(Node):
         self.decrypted_data:str=""
         self.children = children
         self.policy:str=""
+        self.hash:bytes = None
 
     def accept(self, visitor):
         return visitor.visit_complex_node(self)
@@ -149,7 +153,9 @@ class ComplexNode(Node):
         node_dict['encrypted_data'] = self.encrypted_data
         node_dict['decrypted_data'] = self.decrypted_data
         node_dict['policy'] = self.policy
-        node_dict['hash'] = self.hash.hex()
+
+        if self.hash:
+            node_dict['hash'] = self.hash.hex()
 
         children = dict()
         for c in self.children:
@@ -216,6 +222,7 @@ class SbomNode(Node):
         self.purl:str=purl
         self.children = children
         self.signature=None
+        self.hash:bytes = None
 
     def accept(self, visitor):
         # Accept the visitor on the root node and then on all children
@@ -229,7 +236,9 @@ class SbomNode(Node):
 
         node_dict['t'] = NODE_SBOM
         node_dict['purl'] = self.purl
-        node_dict['hash'] = self.hash.hex()
+
+        if self.hash:
+            node_dict['hash'] = self.hash.hex()
 
         if self.signature:
             node_dict['signature'] = self.signature.hex()
@@ -416,7 +425,6 @@ class EncryptVisitor:
         data_to_encrypt=f"{node.complex_type}"
         # Check for * policy( all fields policy ) for the complex node
         apply_to_all_fields = self.get_policy_for_complex_node(node.complex_type,"*")
-        # if there is a rule for the identifier field of the complexnode, and all fields rule , apply OR (attributes1 or attributes2) to the attributes
 
         # TODO this should find the specific children that the "placeholder" attribute identifies
         complex_node_identifier_policy_attributes=self.get_policy_for_complex_node(node.complex_type, "placeholder")
