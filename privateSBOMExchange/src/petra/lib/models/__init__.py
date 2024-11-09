@@ -540,6 +540,7 @@ class PrintVisitor:
         for child in node.children:
             child.accept(self)
 
+
 class EncryptVisitor:
     """Visitor that encrypts the data in the nodes based on policies."""
     def __init__(self, pk):

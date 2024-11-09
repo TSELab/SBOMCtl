@@ -5,6 +5,7 @@ import argparse
 
 from petra.lib.models.tree_ops import build_sbom_tree, verify_sameness
 from petra.lib.models import MerkleVisitor, EncryptVisitor, DecryptVisitor
+from petra.lib.models.parallel_encrypt import ParallelEncryptVisitor, ParallelDecryptVisitor
 from petra.lib.util.config import Config
 
 import cpabe
@@ -45,8 +46,9 @@ with open(args.original_file, "w+") as f:
 print("pre-redaction plaintext hash: %s" % sbom_tree.plaintext_hash.hex())
 
 # encrypt node data
-encrypt_visitor = EncryptVisitor(pk)
+encrypt_visitor = ParallelEncryptVisitor(pk,ip_policy_file)
 sbom_tree.accept(encrypt_visitor)
+encrypt_visitor.finalize()
 print("done encrypting")
 
 # hash tree nodes
@@ -63,9 +65,10 @@ with open(args.redacted_file, "w+") as f:
         f.write(json.dumps(sbom_tree.to_dict(), indent=4)+'\n')
 
 # decrypt node data
-decrypt_visitor = DecryptVisitor(sk)
-decrypted_tree = copy.deepcopy(sbom_tree)
-decrypted_tree.accept(decrypt_visitor)
+decrypt_visitor = ParallelDecryptVisitor(sk)
+redacted_tree = copy.deepcopy(sbom_tree)
+redacted_tree.accept(decrypt_visitor)
+decrypt_visitor.finalize()
 print("done decrypting")
 
 print("decrypted plaintext hash: %s" % decrypted_tree.plaintext_hash.hex())
