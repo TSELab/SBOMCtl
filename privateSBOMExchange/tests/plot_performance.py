@@ -7,8 +7,8 @@ import seaborn as sns
 config = configparser.ConfigParser()
 config.read('testConfigs/config.ini')
  
-target_sbom_dir = config['DEFAULT']['spdx_sbom_path_in-the-wild']
-results_dir = config['DEFAULT']['results']
+
+results_dir = "../Petra-evaluation/results"
 
 read_from = os.path.join(results_dir, "performance.json")
 

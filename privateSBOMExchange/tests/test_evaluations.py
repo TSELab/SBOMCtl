@@ -8,32 +8,30 @@ from tqdm import tqdm
 from lib4sbom.parser import SBOMParser
 import configparser
 from multiprocessing import Pool
+from petra.lib.util.config import Config
 
-from ..src.petra.lib.models import *
+from petra.lib.models import *
+from petra.lib.models.tree_ops import GetTargetNodes
 import cpabe
 
 """This tests whether a target has is a member of a tree 
 """
 
-config = configparser.ConfigParser()
-config.read('testConfigs/config.ini')
+bom_conf = Config("config/bom-only.conf")
+policy_conf = Config("config/policy.conf")
+group_conf = Config("config/group.conf")
  
-target_sbom_dir = config['DEFAULT']['small_target_sbom']
-results_dir = config['DEFAULT']['results']
+target_sbom_dir = "../sbom_data/bom-shelter/target_sbom"
+results_dir = "../Petra-evaluation/results"
 
 os.makedirs(results_dir, exist_ok=True)
 
+ip_group = group_conf.get_ip_group()
 
-Groups = [["Security Auditor", "Audit Authorization status of Approved"], ["Security Analyst", "Confidential Security Clearance Level" ]]
+pk, mk = cpabe.cpabe_setup()
+sk = cpabe.cpabe_keygen(pk, mk, ip_group)
 
-
-pk, mk = cpabe.cpabe_setup();
-sk = cpabe.cpabe_keygen(pk, mk, Groups[1])
-
-# too wide, to many nodes to verify membership for. For function tests, skip
-too_wide_sboms = []
-
-policy_files = [config['POLICY'][key] for key in ("intellectual_property_policy", "weaknesses_policy")]
+policy_files = [policy_conf.get_ip_policy(), policy_conf.get_weakness_policy()]
 write_to = os.path.join(results_dir, "performance.json")
 
 DEBUG = True
@@ -65,8 +63,7 @@ def decrypt_contents(sbom_tree, sk):
     redacted_tree.accept(decrypt_visitor)
 
 def process_sbom(sbom_file):
-    sbom_file = os.path.join(target_sbom_dir, sbom_file)
-    sbom_file_size = os.path.getsize(os.path.join(target_sbom_dir, sbom_file))
+    sbom_file_size = os.path.getsize(sbom_file)
     
 
     # Parse SPDX data into a Document object
@@ -86,7 +83,7 @@ def process_sbom(sbom_file):
     tree_nodes = get_tree_node_hashes(sbom_tree)
 
     start_time = time.time()
-    encrypt_contents(sbom_tree,pk,policy_files[1])
+    encrypt_contents(sbom_tree,pk,policy_files[0])
     encrypt_time = time.time() - start_time
 
 
@@ -116,7 +113,8 @@ if __name__ == "__main__":
     if os.path.exists(write_to):
         os.remove(write_to)
 
-    target_sboms = os.listdir(target_sbom_dir)
+    target_sboms = [os.path.join(target_sbom_dir, file) for file in os.listdir(target_sbom_dir)]
+
     total_processed = len(target_sboms)
 
     print("Started processing sboms....")
