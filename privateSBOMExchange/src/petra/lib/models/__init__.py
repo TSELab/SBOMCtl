@@ -8,12 +8,12 @@ from smt.utils import DEFAULTVALUE, PLACEHOLDER
 from smt.proof import verify_proof
 from smt.tree import SparseMerkleTree
 
-import hashlib
 from lib4sbom.parser import SBOMParser
 
 from cpabe import cpabe_encrypt,cpabe_decrypt
 
 from petra.lib.models.policy import PetraPolicy
+from petra.lib.crypto import Commitment, digest
 
 # node markers
 NODE_REDACTED="encrypted"
@@ -61,7 +61,7 @@ class FieldNode(Node):
         """
         self.field_name = field
         self.field_value = value
-        self.plaintext_hash:bytes=hashlib.sha256((f"{field}:{value}").encode()).digest()
+        self.plaintext_commit:Commitment=Commitment((f"{field}{value}").encode("utf-8"))
         self.encrypted_data:str=NODE_PUBLIC
         self.decrypted_data:str=""
         self.policy:str=policy
@@ -79,7 +79,7 @@ class FieldNode(Node):
         node_dict['t'] = NODE_FIELD
         node_dict['name'] = self.field_name
         node_dict['value'] = self.field_value
-        node_dict['plaintext_hash'] = self.plaintext_hash.hex()
+        node_dict['plaintext_commit'] = self.plaintext_commit.to_hex()
         node_dict['encrypted_data'] = self.encrypted_data
         node_dict['decrypted_data'] = self.decrypted_data
         node_dict['policy'] = self.policy
@@ -100,7 +100,7 @@ class FieldNode(Node):
         
         n = FieldNode(node_dict['name'], node_dict['value'])
         n.hash = bytes.fromhex(node_dict['hash'])
-        n.plaintext_hash = node_dict['plaintext_hash']
+        n.plaintext_commit = Commitment.from_hex(node_dict['plaintext_commit'])
         n.encrypted_data = node_dict['encrypted_data']
         n.decrypted_data = node_dict['decrypted_data']
         n.policy = node_dict['policy']
@@ -130,7 +130,7 @@ class ComplexNode(Node):
             A list of FieldNode instances representing the fields of the package.
         """
         self.complex_type:str=complex_type
-        self.plaintext_hash:bytes=hashlib.sha256((f"{complex_type}").encode()).digest()
+        self.plaintext_commit:Commitment=Commitment((f"{complex_type}").encode("utf-8"))
         self.encrypted_data=NODE_PUBLIC
         self.decrypted_data:str=""
         self.children = children
@@ -148,7 +148,7 @@ class ComplexNode(Node):
 
         node_dict['t'] = NODE_COMPLEX
         node_dict['type'] = self.complex_type
-        node_dict['plaintext_hash'] = self.plaintext_hash.hex()
+        node_dict['plaintext_commit'] = self.plaintext_commit.to_hex()
         node_dict['encrypted_data'] = self.encrypted_data
         node_dict['decrypted_data'] = self.decrypted_data
         node_dict['policy'] = self.policy
@@ -183,7 +183,7 @@ class ComplexNode(Node):
         
         n = ComplexNode(node_dict['type'], children)
         n.hash = bytes.fromhex(node_dict['hash'])
-        n.plaintext_hash = node_dict['plaintext_hash']
+        n.plaintext_commit = Commitment.from_hex(node_dict['plaintext_commit'])
         n.encrypted_data = node_dict['encrypted_data']
         n.decrypted_data = node_dict['decrypted_data']
         n.policy = node_dict['policy']
@@ -309,11 +309,11 @@ class MerkleVisitor:
             # we want to obscure this because a duplicated
             # NODE_REDACTED value will leak that it's a field node.
             # we could easily address this elsewhere too 
-            data_to_hash=(f"{node.encrypted_data}{NODE_REDACTED}{node.policy}").encode()
+            data_to_hash=(f"{node.encrypted_data}{NODE_REDACTED}{node.policy}").encode("utf-8")
         else:
-            data_to_hash=(f"{node.encrypted_data}{node.field_name}{node.field_value}{node.policy}").encode()
+            data_to_hash=(f"{node.encrypted_data}{node.field_name}{node.field_value}{node.policy}").encode("utf-8")
         
-        node.hash=hashlib.sha256(data_to_hash).digest()
+        node.hash=digest(data_to_hash)
         return node.hash 
     
     def visit_complex_node(self, node:ComplexNode):
@@ -337,8 +337,8 @@ class MerkleVisitor:
         """
         children_hashes = b''.join(child.accept(self) for child in node.children)
         
-        data_to_hash=(f"{node.encrypted_data}{node.complex_type}{node.policy}").encode()+children_hashes
-        node.hash=hashlib.sha256(data_to_hash).digest()
+        data_to_hash=(f"{node.encrypted_data}{node.complex_type}{node.policy}").encode("utf-8")+children_hashes
+        node.hash=digest(data_to_hash)
         return node.hash
     
     def visit_sbom_node(self, node:SbomNode):
@@ -358,8 +358,8 @@ class MerkleVisitor:
             The computed hash of the SBOM node data and its children.
         """
         children_hashes = b''.join(child.accept(self) for child in node.children)
-        data_to_hash = (f"{node.purl}").encode() + children_hashes
-        node.hash=hashlib.sha256(data_to_hash).digest()
+        data_to_hash = (f"{node.purl}").encode("utf-8") + children_hashes
+        node.hash=digest(data_to_hash)
         return node.hash 
 
 
@@ -426,6 +426,7 @@ class EncryptVisitor:
         if node.policy != "":
             node.encrypted_data = cpabe_encrypt(self.pk, node.policy, data_to_encrypt.encode("utf-8"))  
             node.complex_type=NODE_REDACTED
+            #print(f"policy found for ComplexNode {node.complex_type} , {node.policy}")
 
         for child in node.children:        
             child.accept(self)  # Visit each child

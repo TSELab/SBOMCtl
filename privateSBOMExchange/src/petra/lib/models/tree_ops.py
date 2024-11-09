@@ -1,8 +1,9 @@
 import hashlib
 from lib4sbom.parser import SBOMParser
 
-from petra.lib.models import SbomNode, FieldNode, ComplexNode
+from petra.lib.models import Node, SbomNode, FieldNode, ComplexNode
 from petra.lib.models.policy import PetraPolicy
+from petra.lib.crypto import digest
 
 def build_sbom_tree(parser:SBOMParser, policy_file: str=None) -> SbomNode:
     """Builds a SBOM tree from an SBOM.""" 
@@ -255,14 +256,11 @@ def verify_membership_proof(root_hash, target_hash, proofs):
         # join the path, then re-hash to produce the next level's hash.
         proof[proof.index("missing")] = contructed_path_hash
         contructed_path = b''.join(hash for hash in proof)
-        contructed_path_hash = hash(contructed_path)
+        contructed_path_hash = digest(contructed_path)
 
     return contructed_path_hash == root_hash
 
-def hash(to_hash):
-    return hashlib.sha256(to_hash.encode()).digest()
-
-def sameness_verify(node: SbomNode):
+def verify_sameness(node: Node):
     """
     Verifies that the decrypted node files are identical to their pre-encryption state.
 
@@ -270,24 +268,27 @@ def sameness_verify(node: SbomNode):
         node (SbomNode): The decrypted, redacted SBOM tree to be verified for sameness
     """
     if isinstance(node, FieldNode):
+        print("Field node")
         #If no data was encrypted, the node is expected to be unchanged, but verify
         if node.decrypted_data:
-            assert node.plaintext_hash == hash(node.decrypted_data)
+            print("Want: %s" % f"{node.field_name}{node.field_value}")
+            print("Got: %s" % node.decrypted_data)
+            assert node.plaintext_commit.verify(node.decrypted_data.encode("utf-8"))
         else:
-            assert node.plaintext_hash == hash(f"{node.field_name}:{node.field_value}")
+            assert node.plaintext_commit.verify((f"{node.field_name}{node.field_value}").encode("utf-8"))
 
     elif isinstance(node, ComplexNode):
         #If no data was encrypted, the node is expected to be unchanged, but verify
         if node.decrypted_data:
-            assert node.plaintext_hash == hash(node.decrypted_data)
+            assert node.plaintext_commit.verify(node.decrypted_data.encode("utf-8"))
         else:
-            assert node.plaintext_hash == hash(f"{node.complex_type}")
+            assert node.plaintext_commit.verify((f"{node.complex_type}").encode("utf-8"))
 
         # Recursively check for each child node
         for child in node.children:
-            sameness_verify(child)
+            verify_sameness(child)
 
     elif isinstance(node, SbomNode):
         # SbomNodes are not encrypted, so only verify each child node
         for child in node.children:
-            sameness_verify(child)
+            verify_sameness(child)

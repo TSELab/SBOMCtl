@@ -3,12 +3,11 @@ from lib4sbom.parser import SBOMParser
 import json
 import argparse
 
-from petra.lib.models.tree_ops import build_sbom_tree, sameness_verify
+from petra.lib.models.tree_ops import build_sbom_tree, verify_sameness
 from petra.lib.models import MerkleVisitor, EncryptVisitor, DecryptVisitor
 from petra.lib.util.config import Config
 
 import cpabe
-
 
 argparser = argparse.ArgumentParser()
 # TODO: add args for the config
@@ -44,6 +43,8 @@ print("done encrypting")
 merkle_visitor = MerkleVisitor()
 merkle_root_hash = sbom_tree.accept(merkle_visitor)
 
+print("done hashing tree")
+
 print("saving redacted tree to disk")
 
 with open(args.redacted_file, "w+") as f:
@@ -62,4 +63,4 @@ with open(args.decrypted_file, "w+") as f:
 
 # verify decrypted tree is consistent 
 # with original sbom tree
-sameness_verify(redacted_tree)
+verify_sameness(redacted_tree)

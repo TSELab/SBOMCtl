@@ -1,28 +1,41 @@
+from __future__ import annotations
+
 import secrets
 import hashlib
 
 DEFAULT_HASH_SIZE_BYTES=32 # 256 bit
 
-def hash(to_hash:bytes) -> bytes:
+def digest(to_hash:bytes) -> bytes:
         return hashlib.sha256(to_hash).digest()
 
 def get_salt() -> bytes:
     rand = secrets.token_bytes(DEFAULT_HASH_SIZE_BYTES)
 
     # we hash it as an extra measure to "hide" the random nonce
-    return hash(rand)
+    return digest(rand)
 
 class Commitment:
     """ Implements a simple cryptographic commitment."""
     def __init__(self, to_commit: bytes) -> None:
         self.salt = get_salt()
-        self.value = hash(self.salt + to_commit)
+        self.value = digest(self.salt + to_commit)
 
     def serialize(self, data: bytes) -> bytes:
         return self.salt + data
 
     def verify(self, opening: bytes) -> bool:
-        return self.value == hash(self.serialize(opening))
+        return self.value == digest(self.serialize(opening))
+
+    def to_hex(self) -> (str, str):
+        return self.salt.hex(), self.value.hex()
+
+    @staticmethod
+    def from_hex(hex_commit: tuple) -> Commitment:
+        c = Commitment(b'0x00') # we need to override this dummy commit
+        c.salt = bytes.fromhex(hex_commit[0])
+        c.value = bytes.fromhex(hex_commit[1])
+
+        return c
 
 '''
 try:
