@@ -412,10 +412,10 @@ class EncryptVisitor:
         node : FieldNode
             The field node whose data will be hashed.
         """
-        data_to_encrypt=f"{node.field_name}{node.field_value}"
+        data_to_encrypt=f"{node.field_name}:{node.field_value}"
         #if parent node(complex node) found policy for this node, encrypt the data using it and erase field node data
         if node.policy != "":
-            print(f"policy found for FieldNode {node.field_name}, {node.policy}.")
+            #print(f"policy found for FieldNode {node.field_name}, {node.policy}.")
             node.encrypted_data = cpabe_encrypt(self.pk, node.policy, data_to_encrypt.encode("utf-8"))
             node.field_name=NODE_REDACTED
             node.field_value=NODE_REDACTED
@@ -424,14 +424,11 @@ class EncryptVisitor:
         """Encrypt the data for a ComplexNode and assign policies to its children."""
         data_to_encrypt=f"{node.complex_type}"
 
-        print(data_to_encrypt)
-
         node_policy = self.get_policy_for_complex_node(node.complex_type)
 
         if node_policy:
-            print(f"policy found for ComplexNode {node.complex_type}")
-            print(node_policy)
-            
+            #print(f"policy found for ComplexNode {node.complex_type}")
+
             # Check for * policy( all fields policy ) for the complex node        
             apply_to_all_fields = node_policy.get("*")
         
@@ -450,7 +447,7 @@ class EncryptVisitor:
 
     def visit_sbom_node(self, node: SbomNode):
         """Visit an SbomNode and accept its children without encrypting."""
-        print(f"Visiting SbomNode '{node.purl}', accepting children.")
+        #print(f"Visiting SbomNode '{node.purl}', accepting children.")
         
         # Accept all child nodes without encryption
         for child in node.children:
@@ -502,7 +499,8 @@ class DecryptVisitor:
             except Exception as e:
                 print(f"Decryption failed with error: {e}")
         else:
-            print(f"No encrypted data found for FieldNode '{node.field_name}'.")
+            pass
+            #print(f"No encrypted data found for FieldNode '{node.field_name}'.")
 
     def visit_complex_node(self, node:ComplexNode):  
         # Visit and decrypt all child nodes.

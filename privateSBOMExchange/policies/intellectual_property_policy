@@ -32,6 +32,6 @@
 
 # Access Control Rules
 # ....................
-[package]
+[Package]
 name = "compliance auditor"
-* = "IP owner" or ("Security Auditor" and "Audit Authorization status of Approved") or ("Security Analyst" and "works at DoD" ) 
+"*" = "\"IP owner\" or (\"Security Auditor\" and \"Audit Authorization status of Approved\") or (\"Security Analyst\" and \"works at DoD\")"
