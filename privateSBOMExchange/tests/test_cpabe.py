@@ -3,17 +3,17 @@ from lib4sbom.parser import SBOMParser
 from petra.lib.util.config import Config
 import json
 
-from petra.lib.models.tree_ops import sameness_verify
-from petra.lib.models import build_sbom_tree, MerkleVisitor, EncryptVisitor, DecryptVisitor
+from petra.lib.models.tree_ops import build_sbom_tree, sameness_verify
+from petra.lib.models import MerkleVisitor, EncryptVisitor, DecryptVisitor
 import cpabe
 
 # read in the IP policy config
-conf = Config("./config/ip-policy.conf")
+conf = Config("./config/tiny.conf")
 
 sbom_file = conf.get_sbom_files()[0]
 
 pk, mk = cpabe.cpabe_setup()
-sk = cpabe.cpabe_keygen(pk, mk, conf.get_cpabe_group('ip-group'))
+sk = cpabe.cpabe_keygen(pk, mk, conf.get_cpabe_group('name-group'))
 
 # Parse SPDX data into a Document object
 SBOM_parser = SBOMParser()   
@@ -21,10 +21,12 @@ SBOM_parser.parse_file(sbom_file)
 
 # build sbom tree
 sbom=SBOM_parser.sbom
-sbom_tree = build_sbom_tree(sbom)
+sbom_tree = build_sbom_tree(sbom, conf.get_cpabe_policy('name-policy'))
+
+print("done constructing tree")
 
 # encrypt node data
-encrypt_visitor = EncryptVisitor(pk, conf.get_cpabe_policy('ip-policy'))
+encrypt_visitor = EncryptVisitor(pk)
 sbom_tree.accept(encrypt_visitor)
 print("done encrypting")
 
@@ -34,7 +36,7 @@ merkle_root_hash = sbom_tree.accept(merkle_visitor)
 
 print("saving encrypted tree to disk")
 
-with open("./data/julia-ip-redacted.json", "w+") as f:
+with open("./data/docker-tiny-redacted.json", "w+") as f:
         f.write(json.dumps(sbom_tree.to_dict(), indent=4)+'\n')
 
 # decrypt node data
