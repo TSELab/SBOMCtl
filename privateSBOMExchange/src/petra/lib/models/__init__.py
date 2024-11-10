@@ -424,9 +424,14 @@ class EncryptVisitor:
         """Encrypt the data for a ComplexNode and assign policies to its children."""
         data_to_encrypt=f"{node.complex_type}"
 
+        print(data_to_encrypt)
+
         node_policy = self.get_policy_for_complex_node(node.complex_type)
 
         if node_policy:
+            print(f"policy found for ComplexNode {node.complex_type}")
+            print(node_policy)
+            
             # Check for * policy( all fields policy ) for the complex node        
             apply_to_all_fields = node_policy.get("*")
         
@@ -434,7 +439,6 @@ class EncryptVisitor:
                 node.policy = apply_to_all_fields
                 node.encrypted_data = cpabe_encrypt(self.pk, node.policy, data_to_encrypt.encode("utf-8"))  
                 node.complex_type=NODE_REDACTED
-                print(f"policy found for ComplexNode {node.complex_type} , {node.policy}")
 
             for child in node.children:
                 if apply_to_all_fields:
@@ -453,11 +457,10 @@ class EncryptVisitor:
             child.accept(self)
 
     def get_policy_for_field_node(self, parent_policy: dict, field_name: str) -> str:
-        """Get the policy for a FieldNode based on its name and parent node type, case-insensitive."""
-        field_name_lower = field_name.lower()
+        """Get the policy for a FieldNode based on its name and parent node type"""
         
         # Check for specific field policies
-        field_policy = parent_policy.get(field_name_lower)
+        field_policy = parent_policy.get(field_name)
 
         if field_policy == None:
             return ""
@@ -465,8 +468,8 @@ class EncryptVisitor:
         return field_policy
 
     def get_policy_for_complex_node(self, complex_node_type: str) -> dict:
-        """Get the policy for a ComplexNode based on its metadata type name, case-insensitive."""
-        return self.policy.get(complex_node_type.lower())
+        """Get the policy for a ComplexNode based on its metadata type name."""
+        return self.policy.get(complex_node_type)
     
     def load_policies(self, policy_file):
         """Load policies from the given toml file into a dictionary, supporting general and specific cases."""
@@ -474,6 +477,8 @@ class EncryptVisitor:
         policies = {}
         with open(policy_file, "rb") as f:
             policies = tomli.load(f)
+
+        print(policies)
 
         return policies
 
