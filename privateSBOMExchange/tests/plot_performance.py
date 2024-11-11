@@ -28,24 +28,25 @@ plt.figure(figsize=(12, 8))
 
 # Build Tree Time vs File Size
 plt.subplot(2, 2, 1)
-sns.scatterplot(y=file_sizes, x=build_times, color='blue')
+sns.scatterplot(x=file_sizes, y=build_times, color='blue')
 plt.xlabel("File Size (bytes)")
 plt.ylabel("Build Tree Time (s)")
 plt.title("Build Tree Time vs File Size")
 
 # Hash Time vs Node Count
 plt.subplot(2, 2, 2)
-sns.scatterplot(y=tree_nodes_count, x=hash_times, color='blue')
+sns.scatterplot(x=tree_nodes_count, y=hash_times, color='blue')
 plt.xlabel("Node Count")
 plt.ylabel("Hash Time (s)")
 plt.title("Hash Time vs Node Count")
 
 # Encrypt & Decrypt Time vs File Size
 plt.subplot(2, 2, 3)
-sns.lineplot(y=encrypt_times, x=file_sizes, marker='o', label="Encrypt Time", color='green')
-sns.lineplot(y=decrypt_times, x=file_sizes, marker='o', label="Decrypt Time", color='red')
-plt.ylabel("File Size (bytes)")
-plt.xlabel("Time (s)")
+encrypt_times = [x/1e6 for x in encrypt_times] 
+sns.violinplot(y=encrypt_times, x=file_sizes)
+#sns.boxenplot(y=decrypt_times, x=file_sizes, marker='o', label="Decrypt Time", color='red')
+plt.xlabel("File Size (MB)")
+plt.ylabel("Time (s)")
 plt.title("Encrypt & Decrypt Time vs File Size")
 plt.legend()
 
@@ -53,8 +54,8 @@ plt.legend()
 plt.subplot(2, 2, 4)
 sns.lineplot(y=encrypt_times, x=tree_nodes_count, marker='o', label="Encrypt Time", color='green')
 sns.lineplot(y=decrypt_times, x=tree_nodes_count, marker='o', label="Decrypt Time", color='red')
-plt.ylabel("Node Count")
-plt.xlabel("Time (s)")
+plt.xlabel("Node Count")
+plt.ylabel("Time (s)")
 plt.title("Encrypt & Decrypt Time vs Node Count")
 plt.legend()
 
