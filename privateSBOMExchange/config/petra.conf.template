@@ -8,4 +8,10 @@ files = []
 # or neither must be specified
 master-key = ""
 public-key = ""
-policy = ""
+
+[cp-abe.policies]
+<policy 1> = ""
+<policy 2> = ""
+
+[cp-abe.groups]
+<group 1> = ["<attribute A>", "<attribute B>"]

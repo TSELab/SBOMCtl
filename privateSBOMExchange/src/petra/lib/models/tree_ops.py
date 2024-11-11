@@ -1,5 +1,118 @@
 import hashlib
+from lib4sbom.parser import SBOMParser
+
 from petra.lib.models import SbomNode, FieldNode, ComplexNode
+from petra.lib.models.policy import PetraPolicy
+
+def build_sbom_tree(parser:SBOMParser, policy_file: str=None) -> SbomNode:
+    """Builds a SBOM tree from an SBOM.""" 
+    leaves = []
+    root_children = []
+
+    policy = PetraPolicy(policy_file)
+
+    #create internal node for document information
+    document_info=parser.get_document()
+    doc_type = "Document Information"
+    doc_policy, doc_rules = policy.get_complex_node_policy(doc_type)
+    
+    doc_fields: List[FieldNode] = [
+    FieldNode(key,value,policy.get_field_node_rule(key, doc_policy,doc_rules))
+    for key, value in document_info.items()
+    if not key.startswith('_') # Exclude internal attributes
+    ]
+    root_children.append(ComplexNode(doc_type, doc_policy, doc_fields))
+    
+    # Create internal node for each package
+    pkgs=parser.get_packages()
+    if(pkgs):
+        pkg_type = "Package"
+        pkg_policy, pkg_rules = policy.get_complex_node_policy(pkg_type)
+        for package in pkgs:
+            # Extract fields for each package
+            package_fields: List[FieldNode] = [
+                FieldNode(key,value,policy.get_field_node_rule(key, pkg_policy, pkg_rules))
+                for key, value in package.items()
+                if not key.startswith('_') # Exclude internal attributes
+            ]
+            root_children.append(ComplexNode(pkg_type, pkg_policy, package_fields))
+
+    # Create internal node for each file
+    files=parser.get_files()
+    if(files):
+        file_type = "File"
+        file_policy, file_rules = policy.get_complex_node_policy(file_type)
+        for file in files:
+            # Extract fields for each file
+            file_fields: List[FieldNode] = [
+                FieldNode(key,value, policy.get_field_node_rule(key, file_policy, file_rules))
+                for key, value in file.items()
+                if not key.startswith('_') # Exclude internal attributes
+            ]
+            root_children.append(ComplexNode(file_type, file_policy, file_fields))
+    
+    # Create internal node for each license        
+    licenses=parser.get_licenses()
+    if (licenses):
+        lic_type = "License"
+        lic_policy, lic_rules = policy.get_complex_node_policy(lic_type)
+        for license in licenses:
+            # Extract fields for each license
+            license_fields: List[FieldNode] = [
+                FieldNode(key,value,policy.get_field_node_rule(key, lic_policy, lic_rules))
+                for key, value in license.items()
+                if not key.startswith('_') # Exclude internal attributes
+            ]
+            root_children.append(ComplexNode(lic_type, lic_policy, license_fields))
+
+    # Create internal node for each vulnerability
+    vulnerabilities=parser.get_vulnerabilities()
+    if (vulnerabilities):
+        vuln_type = "Vulnerability"
+        vuln_policy, vuln_rules = policy.get_complex_node_policy(vuln_type)
+        for vulnerability in vulnerabilities:
+            # Extract fields for each vulnarability
+            vulnerability_fields: List[FieldNode] = [
+                FieldNode(key,value,policy.get_field_node_rule(key, vuln_policy, vuln_rules))
+                for key, value in vulnerability.items()
+                if not key.startswith('_') # Exclude internal attributes
+            ]
+            root_children.append(ComplexNode(vuln_type, vuln_policy, vulnerability_fields))
+
+    # Create internal node for each relationship
+    relationships=parser.get_relationships()
+    if (relationships):
+        rel_type = "Relationship"
+        rel_policy, rel_rules = policy.get_complex_node_policy(rel_type)
+        for relationship in relationships:
+            # Extract fields for each relationship
+            relationship_fields: List[FieldNode] = [
+                FieldNode(key,value,policy.get_field_node_rule(key, rel_policy, rel_rules))
+                for key, value in relationship.items()
+                if not key.startswith('_') # Exclude internal attributes
+            ]
+            root_children.append(ComplexNode(rel_type, rel_policy, relationship_fields))
+
+    # Create internal node for each service
+    services=parser.get_services()
+    if(services):
+        svc_type = "Service"
+        svc_policy, svc_rules = policy.get_complex_node_policy(svc_type)
+        for service in services:
+            # Extract fields for each service
+            service_fields: List[FieldNode] = [
+                FieldNode(key,value,policy.get_field_node_rule(key, svc_policy, svc_rules))
+                for key, value in service.items()
+                if not key.startswith('_') # Exclude internal attributes
+            
+            ]
+            root_children.append(ComplexNode(svc_type, svc_policy, service_fields))
+
+    # TODO pass as purl in from somewhere else
+    pURL=parser.get_document()["name"] # TODO this should become a field node under the SBOM node
+    root = SbomNode(pURL, root_children)
+    #ToDo store sign (root) , hash (root), and the tree in the database
+    return root
 
 def serialize_tree(root: SbomNode) -> dict :
     tree_dict = root.to_dict()
@@ -163,7 +276,7 @@ def sameness_verify(node: SbomNode):
         if node.decrypted_data:
             assert node.plaintext_hash == hash(node.decrypted_data)
         else:
-            assert node.plaintext_hash == hash(f"{node.field_name}{node.field_value}")
+            assert node.plaintext_hash == hash(f"{node.field_name}:{node.field_value}")
 
     elif isinstance(node, ComplexNode):
         #If no data was encrypted, the node is expected to be unchanged, but verify
