@@ -1,11 +1,21 @@
 import copy
 from lib4sbom.parser import SBOMParser
-from petra.lib.util.config import Config
 import json
+import argparse
 
 from petra.lib.models.tree_ops import build_sbom_tree, sameness_verify
 from petra.lib.models import MerkleVisitor, EncryptVisitor, DecryptVisitor
+from petra.lib.util.config import Config
+
 import cpabe
+
+
+argparser = argparse.ArgumentParser()
+# TODO: add args for the config
+# TODO: handle defaults etc
+argparser.add_argument("-r", "--redacted-file", type=str, required=True, help="the file to which to write the redacted SBOM tree")
+argparser.add_argument("-d", "--decrypted-file", type=str, required=True, help="the file to which to write the decrypted SBOM tree")
+args = argparser.parse_args()
 
 # read in the IP policy config
 conf = Config("./config/tiny.conf")
@@ -34,9 +44,9 @@ print("done encrypting")
 merkle_visitor = MerkleVisitor()
 merkle_root_hash = sbom_tree.accept(merkle_visitor)
 
-print("saving encrypted tree to disk")
+print("saving redacted tree to disk")
 
-with open("./data/docker-tiny-redacted.json", "w+") as f:
+with open(args.redacted_file, "w+") as f:
         f.write(json.dumps(sbom_tree.to_dict(), indent=4)+'\n')
 
 # decrypt node data
@@ -45,7 +55,9 @@ redacted_tree = copy.deepcopy(sbom_tree)
 redacted_tree.accept(decrypt_visitor)
 print("done decrypting")
 
-with open("./data/julia-ip-decrypted.json", "w+") as f:
+print("saving decrypted tree to disk")
+
+with open(args.decrypted_file, "w+") as f:
         f.write(json.dumps(redacted_tree.to_dict(), indent=4)+'\n')
 
 # verify decrypted tree is consistent 
