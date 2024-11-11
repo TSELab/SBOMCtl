@@ -31,8 +31,6 @@ class Config:
         # store the CP-ABE info, if any
         cpabe_dict = self.config_dict.get("cp-abe")
 
-        print(self.config_dict)
-
         if cpabe_dict != None:
             # get the CP-ABE keys and policy, if any
 

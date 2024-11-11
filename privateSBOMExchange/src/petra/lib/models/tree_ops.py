@@ -271,8 +271,6 @@ def verify_sameness(node: Node):
         print("Field node")
         #If no data was encrypted, the node is expected to be unchanged, but verify
         if node.decrypted_data:
-            print("Want: %s" % f"{node.field_name}{node.field_value}")
-            print("Got: %s" % node.decrypted_data)
             assert node.plaintext_commit.verify(node.decrypted_data.encode("utf-8"))
         else:
             assert node.plaintext_commit.verify((f"{node.field_name}{node.field_value}").encode("utf-8"))

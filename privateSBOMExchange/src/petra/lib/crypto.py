@@ -18,13 +18,13 @@ class Commitment:
     """ Implements a simple cryptographic commitment."""
     def __init__(self, to_commit: bytes) -> None:
         self.salt = get_salt()
-        self.value = digest(self.salt + to_commit)
+        self.value = digest(self.serialize(to_commit))
 
     def serialize(self, data: bytes) -> bytes:
         return self.salt + data
 
-    def verify(self, opening: bytes) -> bool:
-        return self.value == digest(self.serialize(opening))
+    def verify(self, salt: bytes, opening: bytes) -> bool:
+        return self.value == digest(salt + opening)
 
     def to_hex(self) -> (str, str):
         return self.salt.hex(), self.value.hex()
