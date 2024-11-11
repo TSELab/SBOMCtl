@@ -1,5 +1,5 @@
 from multiprocessing import Pool
-from cpabe import cpabe_encrypt, cpabe_decrypt
+from cpabe import cpabe_encrypt, cpabe_decrypt, ac17_cpabe_encrypt, ac17_cpabe_decrypt, cpabe_decrypt_many, cpabe_encrypt_many
 import configparser
 import os
 
@@ -9,10 +9,18 @@ class ParallelEncryptVisitor:
 
     """Visitor that does a 'collect then encrypt parallely' process to
     increase performance"""
-    def __init__(self, pk, policy_file):
+    def __init__(self, pk, policy_file, decryptor="cpabe"):
         self.policy = self.load_policies(policy_file)
         self.pk = pk
         self.workqueue = [] 
+        if decryptor == "cpabe":
+            self.target_func = cpabe_encrypt
+        elif decryptor == "ac17":
+            self.target_func = ac17_cpabe_encrypt
+        else:
+            print("I don't support this cpabe scheme, use either cpabe or ac17")
+
+
 
     def central_visit(self, node):
         if node.type == NODE_COMPLEX:
@@ -23,10 +31,15 @@ class ParallelEncryptVisitor:
             self._visit_field_node(node)
 
     def finalize(self):
-        targets = [(x[1], x[2], x[3]) for x in self.workqueue]
+        if len(self.workqueue) < 1:
+            return
+        policy = [x[2] for x in self.workqueue]
+        plaintext = [x[3] for x in self.workqueue]
+        pk = self.workqueue[0][1]
         nodes = [x[0] for x in self.workqueue] 
-        with Pool(processes=os.cpu_count()) as pool:
-            result = pool.starmap(cpabe_encrypt, targets)
+        #with Pool(processes=os.cpu_count()) as pool:
+        #    result = pool.starmap(self.target_func, targets)
+        result = cpabe_encrypt_many(pk, policy, plaintext)
 
         for node, encrypted_buffer in zip(nodes, result):
             node.encrypted_data = encrypted_buffer
@@ -127,20 +140,31 @@ class ParallelEncryptVisitor:
 class ParallelDecryptVisitor:
     """A visitor that traverses nodes in the and decrypts encrypted data
     in each node using the provided secret key."""
-    def __init__(self, secret_key):
+    def __init__(self, secret_key, decryptor="cpabe"):
         # TODO: Get user's secret key from database
         self.secret_key = secret_key
         self.workqueue = []
+        if decryptor == "cpabe":
+            self.target_func = cpabe_decrypt
+        elif decryptor == "ac17":
+            self.target_func = ac17_cpabe_decrypt
+        else:
+            print("I don't support this cpabe scheme, use either cpabe or ac17")
 
     def stringify(self, buffer):
-        return [chr(x) for x in buffer]
+        return bytes(buffer).decode("utf-8")
 
 
     def finalize(self):
-        targets = [(x[1], x[2]) for x in self.workqueue]
+        if len(self.workqueue) < 1:
+            return
+        #targets = [(x[1], x[2]) for x in self.workqueue]
+        sk = self.workqueue[0][1]
+        targets = [ x[2] for x in self.workqueue]
         nodes = [x[0] for x in self.workqueue] 
-        with Pool(processes=os.cpu_count()) as pool:
-            result = pool.starmap(cpabe_decrypt, targets)
+        #with Pool(processes=os.cpu_count()) as pool:
+        #    result = pool.starmap(self.target_func, targets)
+        result = cpabe_decrypt_many(sk, targets)
 
         for node, decrypted_buffer in zip(nodes, result):
             node.decrypted_data = self.stringify(decrypted_buffer)
