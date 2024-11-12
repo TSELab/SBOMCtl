@@ -260,33 +260,22 @@ def verify_membership_proof(root_hash, target_hash, proofs):
 
     return contructed_path_hash == root_hash
 
-def verify_sameness(node: Node):
+def verify_sameness(redacted: SbomNode, plaintext: SbomNode) -> bool:
     """
-    Verifies that the decrypted node files are identical to their pre-encryption state.
+    Recomputes the plaintext root hash and tree root hash for the given plaintext
+    SBOM tree. For a decrypted tree, this is done using decrypted node data and verifying
+    that it is identical to their pre-encryption state.
+    For an unredacted tree, the hashes are recomputed from leaf to root.
 
     Parameters:
         node (SbomNode): The decrypted, redacted SBOM tree to be verified for sameness
     """
-    if isinstance(node, FieldNode):
-        print("Field node")
-        #If no data was encrypted, the node is expected to be unchanged, but verify
-        if node.decrypted_data:
-            assert node.plaintext_commit.verify(node.decrypted_data.encode("utf-8"))
-        else:
-            assert node.plaintext_commit.verify((f"{node.field_name}{node.field_value}").encode("utf-8"))
 
-    elif isinstance(node, ComplexNode):
-        #If no data was encrypted, the node is expected to be unchanged, but verify
-        if node.decrypted_data:
-            assert node.plaintext_commit.verify(node.decrypted_data.encode("utf-8"))
-        else:
-            assert node.plaintext_commit.verify((f"{node.complex_type}").encode("utf-8"))
+    plaintext_sameness_vals = plaintext.get_sameness_verification_values()
+    plaintext_pt_hash = plaintext_sameness_vals[0]
+    plaintext_root_hash = plaintext_sameness_vals[1]
 
-        # Recursively check for each child node
-        for child in node.children:
-            verify_sameness(child)
+    if redacted.plaintext_hash == plaintext_pt_hash and redacted.hash == plaintext_root_hash:
+        return True
 
-    elif isinstance(node, SbomNode):
-        # SbomNodes are not encrypted, so only verify each child node
-        for child in node.children:
-            verify_sameness(child)
+    return False
