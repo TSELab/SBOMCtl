@@ -59,17 +59,16 @@ fn cpabe_encrypt<'py>(pk: String, policy: &str, plaintext: &[u8]) -> String {
 
 #[pyfunction]
 /** 
- * Rust-parallel decrypt adapter for rabe. Given a json-formatted secret key (sk) and vector of a
- * ciphertext (ct), decrypt the ciphertext to produce a plaintext (as a vector of bytes) or produce
+ * Rust-parallel encrypt adapter for rabe. Given a json-formatted secret key (sk) and vector of a plaintext (ptvec), encrypt the plaintext to produce ciphertexts (as a vector of bytes) or produce
  * an error.
  */
-fn cpabe_encrypt_many<'py>(pk: String, policy: &Bound<'py, PyList>, ptvec: &Bound<'py, PyList>) -> Vec<String> {
-    let mut pt_vec: Vec<String> = Vec::new();
+fn cpabe_encrypt_many<'py>(pk: String, policy: Vec<String>, ptvec: Vec<Vec<u8>>) -> Vec<String> {
+    let mut pt_vec: Vec<Vec<u8>> = Vec::new();
     let mut pol_vec: Vec<String> = Vec::new();
     let mut ct_vec: Vec<String> = Vec::new();
 
     for value in ptvec {
-        pt_vec.push(value.to_string());
+        pt_vec.push(value.to_vec());
     }
 
     for policy in policy {
@@ -78,7 +77,7 @@ fn cpabe_encrypt_many<'py>(pk: String, policy: &Bound<'py, PyList>, ptvec: &Boun
 
     pt_vec.par_iter()
         .zip(pol_vec.par_iter())
-        .map(|(x, p)| cpabe_encrypt(pk.clone(), p, x.as_bytes()))
+        .map(|(x, p)| cpabe_encrypt(pk.clone(), p, x.as_slice()))
         .collect_into_vec(&mut ct_vec);
 
     ct_vec
@@ -108,13 +107,13 @@ fn cpabe_decrypt(sk: String, ct: String) -> Vec<u8> {
  * ciphertext (ct), decrypt the ciphertext to produce a plaintext (as a vector of bytes) or produce
  * an error.
  */
-fn cpabe_decrypt_many<'py>(sk: String, ctvec: &Bound<'py, PyList>) -> Vec<Vec<u8>> {
+fn cpabe_decrypt_many<'py>(sk: String, ctvec: Vec<String>) -> Vec<Vec<u8>> {
     let _sk = json_to_sk(sk.clone());
     let mut ct_vec: Vec<CpAbeCiphertext> = Vec::new();
     let mut pt_vec: Vec<Vec<u8>> = Vec::new();
 
     for value in ctvec {
-        ct_vec.push(json_to_ct(value.to_string()));
+        ct_vec.push(json_to_ct(value));
     }
 
     ct_vec.par_iter()

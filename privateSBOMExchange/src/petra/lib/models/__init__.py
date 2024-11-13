@@ -99,6 +99,22 @@ class FieldNode(Node):
 
         return data_to_hash
 
+    def get_encryption_value(self) -> bytes:
+        # we encrypt the salt of the plaintext commitment
+        # to prevent dictionary attacks on other nodes' commitments
+        data_to_encrypt = b""
+
+        #if we have a redaction policy, this node's commitment salt and  erase field node data
+        if self.policy != "":
+            data_to_encrypt = self.plaintext_commit.salt # we put this first because it has fixed length
+            data_to_encrypt += self.serialize_field_data() # this needs to match the commitment
+
+            #print(f"policy found for FieldNode {self.field_name}, {self.policy}.")
+            self.field_name=NODE_REDACTED
+            self.field_value=NODE_REDACTED
+
+        return data_to_encrypt
+
     def get_sameness_verification_values(self) -> (bytes, bytes):
         # we assume self is either a decrypted node in a redacted tree,
         # or an unredacted node
@@ -106,17 +122,21 @@ class FieldNode(Node):
             # this is a decrypted node
             commitment_salt = self.decrypted_data[:DEFAULT_HASH_SIZE_BYTES]
             node_contents = self.decrypted_data[DEFAULT_HASH_SIZE_BYTES:]
+
+            #print("got decrypted value: %s (total size= %s)" %( node_contents.decode("utf-8"), str(len(self.decrypted_data))))
         else:
             # this is an unredacted node
             commitment_salt = self.plaintext_commit.salt
             node_contents = self.serialize_field_data()
-
+            
         # we first recompute our own commitment
         commitment_value = digest(commitment_salt + node_contents)
 
         # now, we recompute our node hash
         # if the hashes match with the redacted node's we can show sameness
         node_hash = digest(self.serialize_for_hashing(node_contents, commitment_value))
+
+        print("node_hashes matches for node %s? %s" % (node_contents.decode("utf-8"), str(node_hash == self.hash)))
         
         return commitment_value, node_hash
 
@@ -205,15 +225,29 @@ class ComplexNode(Node):
     def serialize_node_data(self) -> bytes:
         return self.complex_type.encode("utf-8")
     
-    def serialize_for_hashing(self, children_hashes: bytes) -> bytes:
+    def serialize_for_hashing(self, commit_value: bytes, plaintext_hash: bytes, children_hashes: bytes) -> bytes:
         data_to_hash = self.encrypted_data.encode("utf-8")
         data_to_hash += self.policy.encode("utf-8")
 
-        data_to_hash += self.serialize_node_data()
-        data_to_hash += self.plaintext_commit.value
-        data_to_hash += self.plaintext_hash
+        data_to_hash += self.serialize_node_data() # may be NODE_REDACTED
+        data_to_hash += commit_value
+        data_to_hash += plaintext_hash
         
         return data_to_hash + children_hashes
+
+    def get_encryption_value(self) -> bytes:
+        # we encrypt the salt of the plaintext commitment
+        # to prevent dictionary attacks on other nodes' commitments
+        data_to_encrypt = b""
+
+        #if we have a redaction policy, this node's commitment erase node data
+        if self.policy != "":
+            data_to_encrypt = self.plaintext_commit.salt # we put this first because it has fixed length
+            data_to_encrypt += self.serialize_node_data() # this needs to match the commitment
+
+            self.complex_type=NODE_REDACTED
+
+        return data_to_encrypt
 
     def get_sameness_verification_values(self) -> (bytes, bytes):
         # we assume self is either a decrypted node in a redacted tree,
@@ -239,14 +273,10 @@ class ComplexNode(Node):
             child_verif_hashes += verif_values[1] # the recomputed node hash
 
         plaintext_hash = digest(data_for_pt_hash)
-        
-        #print("plaintext_hashes match for node %s? %s" % (self.complex_type, str(plaintext_hash == self.plaintext_hash)))
-            
+    
         # now, we recompute our node hash
         # if the hash matches the redacted node's, we know the commitments must match, proving sameness
-        data_to_hash = self.encrypted_data.encode("utf-8") + self.policy.encode("utf-8")
-        data_to_hash += node_contents + commitment_value
-        data_to_hash += plaintext_hash + child_verif_hashes
+        data_to_hash = self.serialize_for_hashing(commitment_value, plaintext_hash, child_verif_hashes)
 
         node_hash = digest(data_to_hash)
         
@@ -482,7 +512,7 @@ class MerkleVisitor:
         """
         children_hashes = b''.join(child.accept(self) for child in node.children)
         
-        node.hash=digest(node.serialize_for_hashing(children_hashes))
+        node.hash=digest(node.serialize_for_hashing(node.plaintext_commit.value, node.plaintext_hash, children_hashes))
         return node.hash
     
     def visit_sbom_node(self, node:SbomNode):
@@ -555,33 +585,21 @@ class EncryptVisitor:
         node : FieldNode
             The field node whose data will be hashed.
         """
+        data_to_encrypt = node.get_encryption_value()
 
-        # we encrypt the salt of the plaintext commitment
-        # to prevent dictionary attacks on other nodes' commitments
-        data_to_encrypt = node.plaintext_commit.salt # we put this first because it has fixed length
-
-        data_to_encrypt += (f"{node.field_name}:{node.field_value}").encode("utf-8") # this needs to match the commitment
-
-        #if we have a redaction policy, encrypt and erase field node data
-        if node.policy != "":
-            #print(f"policy found for FieldNode {node.field_name}, {node.policy}.")
+        if node.policy != "" and data_to_encrypt:
+            #print("data_to_encrypt: %s (total size= %s)" % (data_to_encrypt[32:].decode("utf-8"), str(len(data_to_encrypt))))
             node.encrypted_data = cpabe_encrypt(self.pk, node.policy, data_to_encrypt)
-            node.field_name=NODE_REDACTED
-            node.field_value=NODE_REDACTED
 
     def visit_complex_node(self, node:ComplexNode):
         """Encrypt the data for a ComplexNode and assign policies to its children."""
-        # we also encrypt the salt of the plaintext commitment
-        # to prevent dictionary attacks on other nodes' commitments
-        data_to_encrypt = node.plaintext_commit.salt # we put this first because it has fixed length
-        data_to_encrypt += (f"{node.complex_type}").encode("utf-8")
+        data_to_encrypt =  node.get_encryption_value()
 
-        if node.policy != "":
+        if node.policy != "" and data_to_encrypt:
             node.encrypted_data = cpabe_encrypt(self.pk, node.policy, data_to_encrypt)
-            node.complex_type=NODE_REDACTED
             #print(f"policy found for ComplexNode {node.complex_type} , {node.policy}")
 
-        for child in node.children:        
+        for child in node.children:
             child.accept(self)  # Visit each child
 
     def visit_sbom_node(self, node: SbomNode):
