@@ -1,0 +1,7 @@
+# Access Control Rules
+# ....................
+[Document]
+name= "\"Security Auditor\" and \"Audit Authorization status of Approved\""
+
+[File]
+filetype = "\"Security Auditor\" and \"Audit Authorization status of Approved\""

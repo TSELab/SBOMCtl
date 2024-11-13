@@ -14,7 +14,9 @@ from cpabe import cpabe_encrypt,cpabe_decrypt
 
 from petra.lib.models.policy import PetraPolicy
 from petra.lib.crypto import Commitment, digest, DEFAULT_HASH_SIZE_BYTES
+from petra.lib.crypto import decrypt_data_AES, encrypt_data_AES, generate_AES_key
 
+keys_before_encryption=[]
 # node markers
 NODE_REDACTED="encrypted"
 NODE_PUBLIC="public"
@@ -372,6 +374,8 @@ class SbomNode(Node):
         self.signature=None
         self.hash:bytes = None
         self.policy = redaction_policy
+        self.keys={}
+        self.decrypted_keys={}
 
         # sameness properties
         # the plaintext_hash is needed to verify the structural congruence
@@ -575,6 +579,7 @@ class EncryptVisitor:
     """Visitor that encrypts the data in the nodes based on policies."""
     def __init__(self, pk):
         self.pk = pk
+        self.__aes_key_dict={}
 
     def visit_field_node(self, node: FieldNode):
         """Visit a FieldNode and encrypt its data using cpabe
@@ -589,15 +594,32 @@ class EncryptVisitor:
 
         if node.policy != "" and data_to_encrypt:
             #print("data_to_encrypt: %s (total size= %s)" % (data_to_encrypt[32:].decode("utf-8"), str(len(data_to_encrypt))))
-            node.encrypted_data = cpabe_encrypt(self.pk, node.policy, data_to_encrypt)
+
+            #print(f"policy found for FieldNode {node.field_name}, {node.policy}.")
+            if node.policy not in self.__aes_key_dict:
+                key=generate_AES_key() 
+                print(f"key length ",len(key))
+                self.__aes_key_dict[node.policy] = generate_AES_key() 
+                print(f"key length ",len(self.__aes_key_dict[node.policy]))
+            node.encrypted_data = encrypt_data_AES(data_to_encrypt,self.__aes_key_dict[node.policy])
+            #node.encrypted_data = cpabe_encrypt(self.pk, node.policy, data_to_encrypt)
+            node.field_name=NODE_REDACTED
+            node.field_value=NODE_REDACTED
 
     def visit_complex_node(self, node:ComplexNode):
         """Encrypt the data for a ComplexNode and assign policies to its children."""
         data_to_encrypt =  node.get_encryption_value()
 
         if node.policy != "" and data_to_encrypt:
-            node.encrypted_data = cpabe_encrypt(self.pk, node.policy, data_to_encrypt)
             #print(f"policy found for ComplexNode {node.complex_type} , {node.policy}")
+            if node.policy not in self.__aes_key_dict:
+                key=generate_AES_key() 
+                print(f"key length {0}",len(key))
+                self.__aes_key_dict[node.policy] = generate_AES_key() 
+                print(f"key length {0}",len(self.__aes_key_dict[node.policy]))
+            node.encrypted_data = encrypt_data_AES(data_to_encrypt,self.__aes_key_dict[node.policy])
+            #node.encrypted_data = cpabe_encrypt(self.pk, node.policy, data_to_encrypt.encode("utf-8"))  
+            node.complex_type=NODE_REDACTED
 
         for child in node.children:
             child.accept(self)  # Visit each child
@@ -606,17 +628,20 @@ class EncryptVisitor:
         """Visit an SbomNode and accept its children without encrypting."""
         #print(f"Visiting SbomNode '{node.purl}', accepting children.")
         
-        # Accept all child nodes without encryption
+        # Accept all child nodes 
         for child in node.children:
             child.accept(self)
-
+        # Encrypt AES keys
+        for policy in self.__aes_key_dict:
+            node.keys[policy] = cpabe_encrypt(self.pk, policy, self.__aes_key_dict[policy]) 
+            keys_before_encryption.append(self.__aes_key_dict[policy])
 class DecryptVisitor:
     """A visitor that traverses nodes in the and decrypts encrypted data
     in each node using the provided secret key."""
     def __init__(self, secret_key):
         # TODO: Get user's secret key from database
         self.secret_key = secret_key
-
+        self.__decrypted_keys={}
     def visit_field_node(self, node: FieldNode):
         """Visit a FieldNode and decrypt its encrypted data using the secret key
         Parameters
@@ -627,6 +652,13 @@ class DecryptVisitor:
         if node.encrypted_data != NODE_PUBLIC:
             try:
                 node.decrypted_data = bytes(cpabe_decrypt(self.secret_key, node.encrypted_data))
+                #node.decrypted_data =  "".join([chr(x) for x in cpabe_decrypt(self.secret_key, node.encrypted_data)])
+                print (len(self.__decrypted_keys[node.policy]))
+                print(type(node.encrypted_data),type(self.__decrypted_keys[node.policy]))
+                #assert (self.__decrypted_keys[node.policy].encode())==keys_before_encryption[0], f"Assertion failed: retrived key is not equal to original"
+                node.decrypted_data = decrypt_data_AES(node.encrypted_data,(self.__decrypted_keys[node.policy].encode()))
+                if (node.decrypted_data):
+                    print(node.decrypted_data)
             except Exception as e:
                 print(f"Decryption failed with error: {e}")
         else:
@@ -638,15 +670,34 @@ class DecryptVisitor:
         if node.encrypted_data != NODE_PUBLIC:
             node.decrypted_data = bytes(cpabe_decrypt(self.secret_key, node.encrypted_data))
 
+            #node.decrypted_data =  "".join([chr(x) for x in cpabe_decrypt(self.secret_key, node.encrypted_data)])
+            try:
+                node.decrypted_data = decrypt_data_AES(node.encrypted_data,self.__decrypted_keys[node.policy].encode())
+            except Exception as e:
+                print(f"Decryption failed with error: {e}") 
+                
+        else:
+            pass
         for child in node.children:
             child.accept(self)  
 
     def visit_sbom_node(self, node: SbomNode): 
+        # decrypt AES keys 
+        if (node.keys):
+            for policy,encrypted_aes_key in node.keys.items():
+                try:
+                    self.__decrypted_keys[policy]=  "".join([chr(x) for x in cpabe_decrypt(self.secret_key, encrypted_aes_key)])
+                except Exception as e:
+                    print(f"Decryption failed with error: {e}")
+                    node.decrypted_keys[policy]=""
+        else:
+            pass
         # Visit and decrypt all child nodes.  
         for child in node.children:
             child.accept(self)
 
         del self.secret_key
+        del self.__decrypted_keys
 
 '''
 #represent SBOM in file as Merkle tree

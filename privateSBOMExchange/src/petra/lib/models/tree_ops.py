@@ -14,7 +14,7 @@ def build_sbom_tree(parser:SBOMParser, policy_file: str=None) -> SbomNode:
 
     #create internal node for document information
     document_info=parser.get_document()
-    doc_type = "Document Information"
+    doc_type = "Document"
     doc_policy, doc_rules = policy.get_complex_node_policy(doc_type)
     
     doc_fields: List[FieldNode] = [
