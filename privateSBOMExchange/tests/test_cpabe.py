@@ -3,16 +3,16 @@ from lib4sbom.parser import SBOMParser
 import json
 import argparse
 
-from petra.lib.models.tree_ops import build_sbom_tree, sameness_verify
+from petra.lib.models.tree_ops import build_sbom_tree, verify_sameness
 from petra.lib.models import MerkleVisitor, EncryptVisitor, DecryptVisitor
 from petra.lib.util.config import Config
 
 import cpabe
 
-
 argparser = argparse.ArgumentParser()
 # TODO: add args for the config
 # TODO: handle defaults etc
+argparser.add_argument("-o", "--original-file", type=str, required=True, help="the file to which to write the original SBOM tree")
 argparser.add_argument("-r", "--redacted-file", type=str, required=True, help="the file to which to write the redacted SBOM tree")
 argparser.add_argument("-d", "--decrypted-file", type=str, required=True, help="the file to which to write the decrypted SBOM tree")
 args = argparser.parse_args()
@@ -35,6 +35,15 @@ sbom_tree = build_sbom_tree(sbom, conf.get_cpabe_policy('name-policy'))
 
 print("done constructing tree")
 
+# hash tree nodes
+merkle_visitor = MerkleVisitor()
+merkle_root_hash = sbom_tree.accept(merkle_visitor)
+
+with open(args.original_file, "w+") as f:
+        f.write(json.dumps(sbom_tree.to_dict(), indent=4)+'\n')
+
+print("pre-redaction plaintext hash: %s" % sbom_tree.plaintext_hash.hex())
+
 # encrypt node data
 encrypt_visitor = EncryptVisitor(pk)
 sbom_tree.accept(encrypt_visitor)
@@ -44,6 +53,10 @@ print("done encrypting")
 merkle_visitor = MerkleVisitor()
 merkle_root_hash = sbom_tree.accept(merkle_visitor)
 
+print("done hashing tree")
+
+print("redacted plaintext hash: %s" % sbom_tree.plaintext_hash.hex())
+
 print("saving redacted tree to disk")
 
 with open(args.redacted_file, "w+") as f:
@@ -51,15 +64,19 @@ with open(args.redacted_file, "w+") as f:
 
 # decrypt node data
 decrypt_visitor = DecryptVisitor(sk)
-redacted_tree = copy.deepcopy(sbom_tree)
-redacted_tree.accept(decrypt_visitor)
+decrypted_tree = copy.deepcopy(sbom_tree)
+decrypted_tree.accept(decrypt_visitor)
 print("done decrypting")
+
+print("decrypted plaintext hash: %s" % decrypted_tree.plaintext_hash.hex())
 
 print("saving decrypted tree to disk")
 
 with open(args.decrypted_file, "w+") as f:
-        f.write(json.dumps(redacted_tree.to_dict(), indent=4)+'\n')
+        f.write(json.dumps(decrypted_tree.to_dict(), indent=4)+'\n')
 
 # verify decrypted tree is consistent 
 # with original sbom tree
-sameness_verify(redacted_tree)
+passed = verify_sameness(sbom_tree, decrypted_tree)
+
+print("full tree sameness verification passed? %s" % str(passed))

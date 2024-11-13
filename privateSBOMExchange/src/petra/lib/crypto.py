@@ -1,5 +1,43 @@
-import sys
+from __future__ import annotations
 
+import secrets
+import hashlib
+
+DEFAULT_HASH_SIZE_BYTES=32 # 256 bit
+
+def digest(to_hash:bytes) -> bytes:
+        return hashlib.sha256(to_hash).digest()
+
+def get_salt() -> bytes:
+    rand = secrets.token_bytes(DEFAULT_HASH_SIZE_BYTES)
+
+    # we hash it as an extra measure to "hide" the random nonce
+    return digest(rand)
+
+class Commitment:
+    """ Implements a simple cryptographic commitment."""
+    def __init__(self, to_commit: bytes) -> None:
+        self.salt = get_salt()
+        self.value = digest(self.serialize(to_commit))
+
+    def serialize(self, data: bytes) -> bytes:
+        return self.salt + data
+
+    def verify(self, salt: bytes, opening: bytes) -> bool:
+        return self.value == digest(salt + opening)
+
+    def to_hex(self) -> (str, str):
+        return self.salt.hex(), self.value.hex()
+
+    @staticmethod
+    def from_hex(hex_commit: tuple) -> Commitment:
+        c = Commitment(b'0x00') # we need to override this dummy commit
+        c.salt = bytes.fromhex(hex_commit[0])
+        c.value = bytes.fromhex(hex_commit[1])
+
+        return c
+
+'''
 try:
     from cpabe import cpabe_decrypt, cpabe_encrypt, cpabe_keygen, cpabe_setup, cpabe_delegate
 except:
@@ -31,6 +69,4 @@ def encrypt_SBOM(flatten_SBOM_data, pub_key, policy):
         ct = cpabe_encrypt(pub_key, policy, value.encode("utf-8"))
         result.append((key, ct))
     return result
-
-
-
+'''

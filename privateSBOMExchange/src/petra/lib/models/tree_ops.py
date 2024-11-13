@@ -1,8 +1,9 @@
 import hashlib
 from lib4sbom.parser import SBOMParser
 
-from petra.lib.models import SbomNode, FieldNode, ComplexNode
+from petra.lib.models import Node, SbomNode, FieldNode, ComplexNode
 from petra.lib.models.policy import PetraPolicy
+from petra.lib.crypto import digest
 
 def build_sbom_tree(parser:SBOMParser, policy_file: str=None) -> SbomNode:
     """Builds a SBOM tree from an SBOM.""" 
@@ -240,8 +241,6 @@ def verify_membership_proof(root_hash, target_hash, proofs):
     """
     Verify the membership proof for a target hash within an SBOM tree.
     """
-    def hash(to_hash):
-        return hashlib.sha256(to_hash).digest()
 
     if target_hash == root_hash:
         return True
@@ -251,45 +250,36 @@ def verify_membership_proof(root_hash, target_hash, proofs):
     
     # Start with `target_hash` and use `proofs` to iteratively build a hash path.
     
-    contructed_path_hash = target_hash
+    constructed_path_hash = target_hash
     for proof in proofs:
         # Replace the "missing" entry in each proof with the current hash, 
         # join the path, then re-hash to produce the next level's hash.
-        proof[proof.index("missing")] = contructed_path_hash
-        contructed_path = b''.join(hash for hash in proof)
-        contructed_path_hash = hash(contructed_path)
+        proof[proof.index("missing")] = constructed_path_hash
+        constructed_path = b''.join(hash for hash in proof)
+        constructed_path_hash = digest(constructed_path)
 
-    return contructed_path_hash == root_hash
+    return constructed_path_hash == root_hash
 
-def hash(to_hash):
-    return hashlib.sha256(to_hash.encode()).digest()
-
-def sameness_verify(node: SbomNode):
+def verify_sameness(redacted: SbomNode, plaintext: SbomNode) -> bool:
     """
-    Verifies that the decrypted node files are identical to their pre-encryption state.
+    Recomputes the plaintext root hash and tree root hash for the given
+    plaintext SBOM tree. For a decrypted tree, this is done using decrypted
+    node data and verifying that it is identical to their pre-encryption
+    state.
+    For an unredacted tree, the hashes are recomputed from leaf to root.
 
     Parameters:
-        node (SbomNode): The decrypted, redacted SBOM tree to be verified for sameness
+      redacted (SbomNode): The redacted SBOM tree
+        
+      plaintext (SbomNode): The unredacted or decrypted SBOM tree to be
+        verified for sameness
     """
-    if isinstance(node, FieldNode):
-        #If no data was encrypted, the node is expected to be unchanged, but verify
-        if node.decrypted_data:
-            assert node.plaintext_hash == hash(node.decrypted_data)
-        else:
-            assert node.plaintext_hash == hash(f"{node.field_name}:{node.field_value}")
 
-    elif isinstance(node, ComplexNode):
-        #If no data was encrypted, the node is expected to be unchanged, but verify
-        if node.decrypted_data:
-            assert node.plaintext_hash == hash(node.decrypted_data)
-        else:
-            assert node.plaintext_hash == hash(f"{node.complex_type}")
+    plaintext_sameness_vals = plaintext.get_sameness_verification_values()
+    plaintext_pt_hash = plaintext_sameness_vals[0]
+    plaintext_root_hash = plaintext_sameness_vals[1]
 
-        # Recursively check for each child node
-        for child in node.children:
-            sameness_verify(child)
+    if redacted.plaintext_hash == plaintext_pt_hash and redacted.hash == plaintext_root_hash:
+        return True
 
-    elif isinstance(node, SbomNode):
-        # SbomNodes are not encrypted, so only verify each child node
-        for child in node.children:
-            sameness_verify(child)
+    return False
