@@ -37,10 +37,6 @@ sbom_tree = build_sbom_tree(sbom, conf.get_cpabe_policy('ip-policy'))
 
 print("done constructing tree")
 
-# hash tree nodes
-merkle_visitor = MerkleVisitor()
-merkle_root_hash = sbom_tree.accept(merkle_visitor)
-
 with open(args.original_file, "w+") as f:
         f.write(json.dumps(sbom_tree.to_dict(), indent=4)+'\n')
 

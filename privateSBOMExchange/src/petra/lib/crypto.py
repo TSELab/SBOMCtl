@@ -110,7 +110,6 @@ def encrypt_data_AES(plaintext, key):
     
     return iv_ciphertext_base64
 
-
 # Function to decrypt the ciphertext using AES-256 (CBC mode)
 def decrypt_data_AES(ciphertext_base64, key):
     # Ensure the key is 16 bytes long (128-bit AES)
@@ -118,7 +117,7 @@ def decrypt_data_AES(ciphertext_base64, key):
         raise ValueError("Key must be 16 bytes long")
     
     # Base64 decode the concatenated IV + ciphertext
-    iv_ciphertext = base64.b64decode(ciphertext_base64)
+    iv_ciphertext = base64.b64decode(ciphertext_base64.encode("utf-8"))
     
     # Extract the IV (first 16 bytes)
     iv = iv_ciphertext[:AES.block_size]
