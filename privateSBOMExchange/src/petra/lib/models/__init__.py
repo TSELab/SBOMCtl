@@ -14,6 +14,7 @@ from cpabe import cpabe_encrypt,cpabe_decrypt
 
 from petra.lib.models.policy import PetraPolicy
 from petra.lib.crypto import Commitment, digest, DEFAULT_HASH_SIZE_BYTES
+from petra.lib.crypto import decrypt_data_AES, encrypt_data_AES
 
 # node markers
 NODE_REDACTED="encrypted"
@@ -123,7 +124,7 @@ class FieldNode(Node):
             commitment_salt = self.decrypted_data[:DEFAULT_HASH_SIZE_BYTES]
             node_contents = self.decrypted_data[DEFAULT_HASH_SIZE_BYTES:]
 
-            #print("got decrypted value: %s (total size= %s)" %( node_contents.decode("utf-8"), str(len(self.decrypted_data))))
+            # print("got decrypted value: %s (total size= %s)" %( node_contents.decode("utf-8"), str(len(self.decrypted_data))))
         else:
             # this is an unredacted node
             commitment_salt = self.plaintext_commit.salt
@@ -132,12 +133,22 @@ class FieldNode(Node):
         # we first recompute our own commitment
         commitment_value = digest(commitment_salt + node_contents)
 
+        '''
+        # debug
+        if commitment_value != self.plaintext_commit.value:
+            print("commitment mismatch for node %s" % node_contents.decode("utf-8"))
+        '''
+
         # now, we recompute our node hash
         # if the hashes match with the redacted node's we can show sameness
         node_hash = digest(self.serialize_for_hashing(node_contents, commitment_value))
 
-        print("node_hashes matches for node %s? %s" % (node_contents.decode("utf-8"), str(node_hash == self.hash)))
-        
+        '''
+        # debug
+        if node_hash != self.hash:
+            print("node_hash mismatch for node %s" % node_contents.decode("utf-8"))
+        '''
+
         return commitment_value, node_hash
 
     def to_dict(self) -> dict:
@@ -179,6 +190,7 @@ class FieldNode(Node):
 
         return n
 
+
 class ComplexNode(Node):
     """Represents a complex node that can have multiple children of type FieldNode.
 
@@ -207,7 +219,6 @@ class ComplexNode(Node):
         self.children = children
         self.policy:str=policy
         self.hash:bytes = None
-
         # sameness properties:
         # the commitment allows consumers to verify the
         # sameness of the content of a node only if they can decrypt it
@@ -339,6 +350,7 @@ class ComplexNode(Node):
 
         return n
 
+
 class SbomNode(Node):
     """Represents the root node of a Software Bill of Materials (SBOM) tree.
 
@@ -372,11 +384,16 @@ class SbomNode(Node):
         self.signature=None
         self.hash:bytes = None
         self.policy = redaction_policy
+        self.decrypted_policy={}
+        self.encrypted_data={}
 
         # sameness properties
         # the plaintext_hash is needed to verify the structural congruence
         # aspect of sameness, i.e., the original SBOM structure is preserved
-        data_to_hash = b""
+        data_to_hash=b""
+        for policy, key in self.policy.items():
+            data_to_hash += key
+
         for c in self.children:
             if isinstance(c, FieldNode):
                 data_to_hash += c.plaintext_commit.value
@@ -391,7 +408,11 @@ class SbomNode(Node):
 
     def get_sameness_verification_values(self) -> (bytes, bytes):
         # we start by recomputing our plaintext hash
-        data_for_pt_hash = b""
+        decrypted_aes_keys=b""
+        for policy, key in self.decrypted_policy.items():
+            decrypted_aes_keys = decrypted_aes_keys+key
+        
+        data_for_pt_hash = decrypted_aes_keys
         child_verif_hashes = b""
         
         for c in self.children:
@@ -402,7 +423,11 @@ class SbomNode(Node):
         plaintext_hash = digest(data_for_pt_hash)
 
         # then, we recompute our node hash
-        node_hash = digest(self.purl.encode("utf-8") + plaintext_hash + child_verif_hashes)
+        encrypted_keys=b""
+        for policy, key in self.encrypted_data.items():
+            encrypted_keys += key.encode("utf-8")
+
+        node_hash = digest(encrypted_keys + self.purl.encode("utf-8") + plaintext_hash + child_verif_hashes)
         
         return plaintext_hash, node_hash
 
@@ -532,8 +557,12 @@ class MerkleVisitor:
             The computed hash of the SBOM node data and its children.
         """
         children_hashes = b''.join(child.accept(self) for child in node.children)
-        # TODO: hash redaction policy
-        data_to_hash = node.purl.encode("utf-8") + node.plaintext_hash + children_hashes
+
+        redacted_keys = b""
+        for policy, key in node.encrypted_data.items():
+            redacted_keys += key.encode("utf-8")
+
+        data_to_hash = redacted_keys + node.purl.encode("utf-8") + node.plaintext_hash + children_hashes
         node.hash=digest(data_to_hash)
         return node.hash
 
@@ -570,11 +599,11 @@ class PrintVisitor:
         for child in node.children:
             child.accept(self)
 
-
 class EncryptVisitor:
     """Visitor that encrypts the data in the nodes based on policies."""
     def __init__(self, pk):
         self.pk = pk
+        self.__aes_key_dict = dict()
 
     def visit_field_node(self, node: FieldNode):
         """Visit a FieldNode and encrypt its data using cpabe
@@ -588,27 +617,48 @@ class EncryptVisitor:
         data_to_encrypt = node.get_encryption_value()
 
         if node.policy != "" and data_to_encrypt:
+            # debug
             #print("data_to_encrypt: %s (total size= %s)" % (data_to_encrypt[32:].decode("utf-8"), str(len(data_to_encrypt))))
-            node.encrypted_data = cpabe_encrypt(self.pk, node.policy, data_to_encrypt)
+            #print(f"policy found for FieldNode {node.field_name}, {node.policy}.")
+            
+            node.encrypted_data = encrypt_data_AES(data_to_encrypt,self.__aes_key_dict[node.policy])
+            node.field_name=NODE_REDACTED
+            node.field_value=NODE_REDACTED
 
     def visit_complex_node(self, node:ComplexNode):
         """Encrypt the data for a ComplexNode and assign policies to its children."""
         data_to_encrypt =  node.get_encryption_value()
 
         if node.policy != "" and data_to_encrypt:
-            node.encrypted_data = cpabe_encrypt(self.pk, node.policy, data_to_encrypt)
+            #debug
             #print(f"policy found for ComplexNode {node.complex_type} , {node.policy}")
+            
+            node.encrypted_data = encrypt_data_AES(data_to_encrypt,self.__aes_key_dict[node.policy])
+            node.complex_type=NODE_REDACTED
 
         for child in node.children:
             child.accept(self)  # Visit each child
 
     def visit_sbom_node(self, node: SbomNode):
         """Visit an SbomNode and accept its children without encrypting."""
+        
+        self.__aes_key_dict=node.policy
+
+        # debug
+        #print(self.__aes_key_dict)
         #print(f"Visiting SbomNode '{node.purl}', accepting children.")
         
-        # Accept all child nodes without encryption
+        # Accept all child nodes 
         for child in node.children:
             child.accept(self)
+
+        # Encrypt AES keys
+        for policy, key in node.policy.items():
+            # debug
+            #print("encrypting key: %s" % node.policy[policy].hex())
+
+            node.encrypted_data[policy] = cpabe_encrypt(self.pk, policy, key)
+            node.policy[policy]=NODE_REDACTED
 
 class DecryptVisitor:
     """A visitor that traverses nodes in the and decrypts encrypted data
@@ -616,6 +666,7 @@ class DecryptVisitor:
     def __init__(self, secret_key):
         # TODO: Get user's secret key from database
         self.secret_key = secret_key
+        self.__decrypted_aes_keys={}
 
     def visit_field_node(self, node: FieldNode):
         """Visit a FieldNode and decrypt its encrypted data using the secret key
@@ -626,7 +677,10 @@ class DecryptVisitor:
         """
         if node.encrypted_data != NODE_PUBLIC:
             try:
-                node.decrypted_data = bytes(cpabe_decrypt(self.secret_key, node.encrypted_data))
+                node.decrypted_data = decrypt_data_AES(node.encrypted_data, self.__decrypted_aes_keys[node.policy])
+
+                # debug
+                #print(node.decrypted_data)
             except Exception as e:
                 print(f"Decryption failed with error: {e}")
         else:
@@ -636,17 +690,39 @@ class DecryptVisitor:
     def visit_complex_node(self, node:ComplexNode):  
         # Visit and decrypt all child nodes.
         if node.encrypted_data != NODE_PUBLIC:
-            node.decrypted_data = bytes(cpabe_decrypt(self.secret_key, node.encrypted_data))
+            try:
+                node.decrypted_data = decrypt_data_AES(node.encrypted_data, self.__decrypted_aes_keys[node.policy])
+            except Exception as e:
+                print(f"Decryption failed with error: {e}")         
+        else:
+            pass
 
         for child in node.children:
             child.accept(self)  
 
     def visit_sbom_node(self, node: SbomNode): 
+        # decrypt AES keys
+        if len(node.policy) > 0:
+            for policy, encrypted_aes_key in node.encrypted_data.items():
+                try:
+                    node.decrypted_policy[policy] = bytes(cpabe_decrypt(self.secret_key, encrypted_aes_key))
+
+                    # debug
+                    #print("decrypted key: %s" % node.decrypted_policy[policy].hex())
+                except Exception as e:
+                    print(f"Decryption failed with error: {e}")
+                    node.decrypted_policy[policy]=""
+        else:
+            pass
+
         # Visit and decrypt all child nodes.  
+        self.__decrypted_aes_keys=node.decrypted_policy
+
         for child in node.children:
             child.accept(self)
 
         del self.secret_key
+        del self.__decrypted_aes_keys
 
 '''
 #represent SBOM in file as Merkle tree

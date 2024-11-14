@@ -5,7 +5,6 @@ import argparse
 
 from petra.lib.models.tree_ops import build_sbom_tree, verify_sameness
 from petra.lib.models import MerkleVisitor, EncryptVisitor, DecryptVisitor
-from petra.lib.models.parallel_encrypt import ParallelEncryptVisitor, ParallelDecryptVisitor
 from petra.lib.util.config import Config
 
 import cpabe
@@ -13,13 +12,13 @@ import cpabe
 argparser = argparse.ArgumentParser()
 # TODO: add args for the config
 # TODO: handle defaults etc
-argparser.add_argument("-o", "--original-file", type=str, required=True, help="the file to which to write the original SBOM tree")
+argparser.add_argument("-u", "--unredacted-file", type=str, required=True, help="the file to which to write the unredacted SBOM tree")
 argparser.add_argument("-r", "--redacted-file", type=str, required=True, help="the file to which to write the redacted SBOM tree")
 argparser.add_argument("-d", "--decrypted-file", type=str, required=True, help="the file to which to write the decrypted SBOM tree")
-argparser.add_argument("--no-parallel", action='store_true', help="flag indicating whether to parallelize SBOM tree encryption/decryption")
 args = argparser.parse_args()
 
 # read in the IP policy config
+#conf = Config("./config/test-AES.conf")
 conf = Config("./config/ip-policy.conf")
 
 sbom_file = conf.get_sbom_files()[0]
@@ -37,50 +36,25 @@ sbom_tree = build_sbom_tree(sbom, conf.get_cpabe_policy('ip-policy'))
 
 print("done constructing tree")
 
-with open(args.original_file, "w+") as f:
+with open(args.unredacted_file, "w+") as f:
         f.write(json.dumps(sbom_tree.to_dict(), indent=4)+'\n')
 
-print("pre-redaction plaintext hash: %s" % sbom_tree.plaintext_hash.hex())
-
 # encrypt node data
-if args.no_parallel:
-        encrypt_visitor = EncryptVisitor(pk)
-        sbom_tree.accept(encrypt_visitor)
-else:
-        # we default to the parallel encryption
-        encrypt_visitor = ParallelEncryptVisitor(pk)
-        sbom_tree.accept(encrypt_visitor)
-        encrypt_visitor.finalize()
-
+encrypt_visitor = EncryptVisitor(pk)
+sbom_tree.accept(encrypt_visitor)
 print("done encrypting")
 
 # hash tree nodes
 merkle_visitor = MerkleVisitor()
-merkle_root_hash = sbom_tree.accept(merkle_visitor)
+merkle_root_hash_original = sbom_tree.accept(merkle_visitor)
 
 print("done hashing tree")
 
-print("redacted plaintext hash: %s" % sbom_tree.plaintext_hash.hex())
-
-print("saving redacted tree to disk")
-
-with open(args.redacted_file, "w+") as f:
-        f.write(json.dumps(sbom_tree.to_dict(), indent=4)+'\n')
-
 # decrypt node data
+decrypt_visitor = DecryptVisitor(sk)
 decrypted_tree = copy.deepcopy(sbom_tree)
-if args.no_parallel:
-        decrypt_visitor = DecryptVisitor(sk)
-        decrypted_tree.accept(decrypt_visitor)
-else:
-        # we default to the parallel decryption
-        decrypt_visitor = ParallelDecryptVisitor(sk)
-        decrypted_tree.accept(decrypt_visitor)
-        decrypt_visitor.finalize()
-
+decrypted_tree.accept(decrypt_visitor)
 print("done decrypting")
-
-print("decrypted plaintext hash: %s" % decrypted_tree.plaintext_hash.hex())
 
 print("saving decrypted tree to disk")
 

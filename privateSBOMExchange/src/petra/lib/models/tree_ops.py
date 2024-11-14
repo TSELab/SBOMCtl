@@ -14,7 +14,7 @@ def build_sbom_tree(parser:SBOMParser, policy_file: str=None) -> SbomNode:
 
     #create internal node for document information
     document_info=parser.get_document()
-    doc_type = "Document Information"
+    doc_type = "Document"
     doc_policy, doc_rules = policy.get_complex_node_policy(doc_type)
     
     doc_fields: List[FieldNode] = [
@@ -109,9 +109,11 @@ def build_sbom_tree(parser:SBOMParser, policy_file: str=None) -> SbomNode:
             ]
             root_children.append(ComplexNode(svc_type, svc_policy, service_fields))
 
+    # get all access trees from policy file
+    sbom_policy=policy.get_all_access_policies()
     # TODO pass as purl in from somewhere else
     pURL=parser.get_document()["name"] # TODO this should become a field node under the SBOM node
-    root = SbomNode(pURL, root_children)
+    root = SbomNode(pURL, root_children,sbom_policy)
     #ToDo store sign (root) , hash (root), and the tree in the database
     return root
 
