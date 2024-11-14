@@ -1,9 +1,14 @@
+mod ac17;
+
 use pyo3::prelude::*;
 use pyo3::types::PyList;
 use rabe::schemes::bsw::*;
 use rabe::utils::policy::pest::PolicyLanguage;
 use serde_json::{ser, de};
 use std::vec::Vec;
+use rayon::prelude::*;
+
+use crate::ac17::{ac17_cpabe_setup, ac17_cpabe_keygen, ac17_cpabe_encrypt, ac17_cpabe_decrypt};
 
 #[pyfunction]
 /** 
@@ -54,6 +59,35 @@ fn cpabe_encrypt<'py>(pk: String, policy: &str, plaintext: &[u8]) -> String {
 
 #[pyfunction]
 /** 
+ * Rust-parallel encrypt adapter for rabe. Given a json-formatted secret key (sk) and vector of a plaintext (ptvec), encrypt the plaintext to produce ciphertexts (as a vector of bytes) or produce
+ * an error.
+ */
+fn cpabe_encrypt_many<'py>(pk: String, policy: Vec<String>, ptvec: Vec<Vec<u8>>) -> Vec<String> {
+    let mut pt_vec: Vec<Vec<u8>> = Vec::new();
+    let mut pol_vec: Vec<String> = Vec::new();
+    let mut ct_vec: Vec<String> = Vec::new();
+
+    for value in ptvec {
+        pt_vec.push(value.to_vec());
+    }
+
+    for policy in policy {
+        pol_vec.push(policy.to_string());
+    }
+
+    pt_vec.par_iter()
+        .zip(pol_vec.par_iter())
+        .map(|(x, p)| cpabe_encrypt(pk.clone(), p, x.as_slice()))
+        .collect_into_vec(&mut ct_vec);
+
+    ct_vec
+
+}
+
+
+
+#[pyfunction]
+/** 
  * Decrypt adapter for rabe. Given a json-formatted secret key (sk) and a ciphertext (ct),
  *  decrypt the ciphertext to produce a plaintext (as a vector of bytes) or produce an error.
  */
@@ -65,6 +99,32 @@ fn cpabe_decrypt(sk: String, ct: String) -> Vec<u8> {
     pt
 
 }
+
+
+#[pyfunction]
+/** 
+ * Rust-parallel decrypt adapter for rabe. Given a json-formatted secret key (sk) and vector of a
+ * ciphertext (ct), decrypt the ciphertext to produce a plaintext (as a vector of bytes) or produce
+ * an error.
+ */
+fn cpabe_decrypt_many<'py>(sk: String, ctvec: Vec<String>) -> Vec<Vec<u8>> {
+    let _sk = json_to_sk(sk.clone());
+    let mut ct_vec: Vec<CpAbeCiphertext> = Vec::new();
+    let mut pt_vec: Vec<Vec<u8>> = Vec::new();
+
+    for value in ctvec {
+        ct_vec.push(json_to_ct(value));
+    }
+
+    ct_vec.par_iter()
+        .map(|value| decrypt(&_sk, value).unwrap())
+        .collect_into_vec(&mut pt_vec);
+
+    pt_vec
+
+}
+
+
 
 #[pyfunction]
 /** 
@@ -151,6 +211,12 @@ fn cpabe(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(cpabe_keygen, m)?)?;
     m.add_function(wrap_pyfunction!(cpabe_encrypt, m)?)?;
     m.add_function(wrap_pyfunction!(cpabe_decrypt, m)?)?;
+    m.add_function(wrap_pyfunction!(cpabe_decrypt_many, m)?)?;
+    m.add_function(wrap_pyfunction!(cpabe_encrypt_many, m)?)?;
     m.add_function(wrap_pyfunction!(cpabe_delegate, m)?)?;
+    m.add_function(wrap_pyfunction!(ac17_cpabe_setup, m)?)?;
+    m.add_function(wrap_pyfunction!(ac17_cpabe_keygen, m)?)?;
+    m.add_function(wrap_pyfunction!(ac17_cpabe_encrypt, m)?)?;
+    m.add_function(wrap_pyfunction!(ac17_cpabe_decrypt, m)?)?;
     Ok(())
 }

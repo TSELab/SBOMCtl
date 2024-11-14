@@ -5,9 +5,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 config = configparser.ConfigParser()
-config.read('testConfigs/config.ini')
+config.read('config/config.ini')
  
-target_sbom_dir = config['DEFAULT']['spdx_sbom_path_in-the-wild']
 results_dir = config['DEFAULT']['results']
 
 read_from = os.path.join(results_dir, "performance.json")
@@ -43,24 +42,25 @@ plt.title("Hash Time vs Node Count")
 
 # Encrypt & Decrypt Time vs File Size
 plt.subplot(2, 2, 3)
-sns.lineplot(x=encrypt_times, y=file_sizes, marker='o', label="Encrypt Time", color='green')
-sns.lineplot(x=decrypt_times, y=file_sizes, marker='o', label="Decrypt Time", color='red')
-plt.ylabel("File Size (bytes)")
-plt.xlabel("Time (s)")
+encrypt_times = [x/1e6 for x in encrypt_times] 
+sns.violinplot(y=encrypt_times, x=file_sizes)
+#sns.boxenplot(y=decrypt_times, x=file_sizes, marker='o', label="Decrypt Time", color='red')
+plt.xlabel("File Size (MB)")
+plt.ylabel("Time (s)")
 plt.title("Encrypt & Decrypt Time vs File Size")
 plt.legend()
 
 #Encrypt & Decrypt Time vs File Size
 plt.subplot(2, 2, 4)
-sns.lineplot(x=encrypt_times, y=tree_nodes_count, marker='o', label="Encrypt Time", color='green')
-sns.lineplot(x=decrypt_times, y=tree_nodes_count, marker='o', label="Decrypt Time", color='red')
-plt.ylabel("Node Count")
-plt.xlabel("Time (s)")
+sns.lineplot(y=encrypt_times, x=tree_nodes_count, marker='o', label="Encrypt Time", color='green')
+sns.lineplot(y=decrypt_times, x=tree_nodes_count, marker='o', label="Decrypt Time", color='red')
+plt.xlabel("Node Count")
+plt.ylabel("Time (s)")
 plt.title("Encrypt & Decrypt Time vs Node Count")
 plt.legend()
 
 
 plt.tight_layout()
-# plt.show()
+#plt.show()
 plt.savefig(os.path.join(results_dir, "performance.png"))
 

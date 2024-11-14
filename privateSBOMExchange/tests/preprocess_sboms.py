@@ -6,15 +6,15 @@ import shutil
 from lib4sbom.parser import SBOMParser
 import configparser
 
-from ..src.petra.lib.models import *
+from petra.lib.models import *
 import cpabe
 
 "This attempts to filter out SBOMs with erroneous formats."
 
 config = configparser.ConfigParser()
-config.read('testConfigs/config.ini')
+config.read('config/config.ini')
 sbom_of_interest_dir = [config['DEFAULT'][key] for key in ('spdx_sbom_path_in-the-wild', 'spdx_sbom_path_in-the-lab')]
-target_sbom_dir = config['DEFAULT']['target_sbom']
+target_sbom_dir = config['DEFAULT']['target_sbom_dir']
 
 os.makedirs(target_sbom_dir, exist_ok=True)
 
