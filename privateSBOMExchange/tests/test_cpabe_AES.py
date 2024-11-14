@@ -3,7 +3,7 @@ from lib4sbom.parser import SBOMParser
 import json
 import argparse
 
-from petra.lib.models.tree_ops import build_sbom_tree
+from petra.lib.models.tree_ops import build_sbom_tree, verify_sameness
 from petra.lib.models import MerkleVisitor, EncryptVisitor, DecryptVisitor
 from petra.lib.util.config import Config
 
@@ -37,7 +37,7 @@ print("done constructing tree")
 
 # hash tree nodes
 merkle_visitor = MerkleVisitor()
-merkle_root_hash = sbom_tree.accept(merkle_visitor)
+merkle_root_hash_original = sbom_tree.accept(merkle_visitor)
 
 with open(args.original_file, "w+") as f:
         f.write(json.dumps(sbom_tree.to_dict(), indent=4)+'\n')
@@ -57,7 +57,6 @@ print("done decrypting")
 # hash tree nodes
 merkle_visitor = MerkleVisitor()
 merkle_root_hash = sbom_tree.accept(merkle_visitor)
-
 print("done hashing tree")
 
 
@@ -80,4 +79,7 @@ with open(args.decrypted_file, "w+") as f:
 
 # verify decrypted tree is consistent 
 # with original sbom tree
+passed = verify_sameness(sbom_tree, decrypted_tree)
+
+print("full tree sameness verification passed? %s" % str(passed))
 

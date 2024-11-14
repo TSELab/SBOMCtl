@@ -92,16 +92,15 @@ def encrypt_data_AES(plaintext, key):
     
     # Pad the plaintext to be a multiple of AES.block_size (16 bytes)
     padding_length = AES.block_size - len(plaintext) % AES.block_size
-    plaintext_padded = plaintext + chr(padding_length) * padding_length
-    
-    # Convert plaintext to bytes
-    plaintext_bytes = plaintext_padded.encode('utf-8')
-    
+
+    padding = bytes([padding_length] * padding_length)
+    plaintext_padded = plaintext + padding
+
     # Create AES cipher object with the key and IV
     cipher = AES.new(key, AES.MODE_CBC, iv)
     
     # Encrypt the plaintext
-    ciphertext = cipher.encrypt(plaintext_bytes)
+    ciphertext = cipher.encrypt(plaintext_padded)
     
     # Concatenate the IV and ciphertext
     iv_ciphertext = iv + ciphertext
@@ -113,26 +112,34 @@ def encrypt_data_AES(plaintext, key):
 
 
 # Function to decrypt the ciphertext using AES-256 (CBC mode)
-def decrypt_data_AES(encrypted_data, key):
-    # Base64 decode the concatenated IV + ciphertext
-    print(len(key))
-
-    iv_ciphertext = base64.b64decode(encrypted_data)
+def decrypt_data_AES(ciphertext_base64, key):
+    # Ensure the key is 16 bytes long (128-bit AES)
+    if len(key) != 32:
+        raise ValueError("Key must be 16 bytes long")
     
-    # Extract the IV (first 16 bytes) and the ciphertext (rest of the data)
+    # Base64 decode the concatenated IV + ciphertext
+    iv_ciphertext = base64.b64decode(ciphertext_base64)
+    
+    # Extract the IV (first 16 bytes)
     iv = iv_ciphertext[:AES.block_size]
+    
+    # Extract the ciphertext (remaining bytes)
     ciphertext = iv_ciphertext[AES.block_size:]
     
-    # Create AES cipher object with the key and IV
+    # Create AES cipher object with the key and IV (CBC mode)
     cipher = AES.new(key, AES.MODE_CBC, iv)
     
     # Decrypt the ciphertext
     decrypted_padded = cipher.decrypt(ciphertext)
     
-    # Remove padding (assuming PKCS7 padding)
+    # The padding is the value of the last byte, so we remove it
     padding_length = decrypted_padded[-1]
-    decrypted = decrypted_padded[:-padding_length].decode('utf-8')
     
-    return decrypted
-
-
+    # Check if padding_length is valid (should not be larger than block size)
+    if padding_length > AES.block_size:
+        raise ValueError("Invalid padding length.")
+    
+    # Remove the padding
+    plaintext_bytes = decrypted_padded[:-padding_length]
+    
+    return plaintext_bytes

@@ -1,5 +1,7 @@
 import tomli
 
+from petra.lib.crypto import generate_AES_key
+
 class PetraPolicy:
     """ Defines a policy object used for the selective redaction of
         Petra SBOM trees.
@@ -8,6 +10,7 @@ class PetraPolicy:
     def __init__(self, policy_file: str):
         """Load policies from the given toml file into a dictionary, supporting general and specific cases."""
         self.__policy = {}
+        self.__all_policies={}
         with open(policy_file, "rb") as f:
             self.__policy = tomli.load(f)
         
@@ -26,6 +29,8 @@ class PetraPolicy:
         
             if field_rule != None:
                 node_policy = field_rule
+                if node_policy not in self.__all_policies:
+                    self.__all_policies[node_policy]=generate_AES_key() 
         
         return node_policy
 
@@ -41,5 +46,10 @@ class PetraPolicy:
 
             if all_fields_rule:
                 node_policy = all_fields_rule
+                if node_policy not in self.__all_policies:
+                    self.__all_policies[node_policy]=generate_AES_key() 
     
         return node_policy, type_rules
+    
+    def get_all_access_policies(self):
+        return self.__all_policies
