@@ -5,6 +5,7 @@ import json
 import shutil
 from lib4sbom.parser import SBOMParser
 import configparser
+from petra.lib.models.tree_ops import build_sbom_tree
 
 from petra.lib.models import *
 import cpabe
@@ -15,6 +16,7 @@ config = configparser.ConfigParser()
 config.read('config/config.ini')
 sbom_of_interest_dir = [config['DEFAULT'][key] for key in ('spdx_sbom_path_in-the-wild', 'spdx_sbom_path_in-the-lab')]
 target_sbom_dir = config['DEFAULT']['target_sbom_dir']
+policy_files = [config['POLICY'][key] for key in ("intellectual_property_policy", "weaknesses_policy")]
 
 os.makedirs(target_sbom_dir, exist_ok=True)
 
@@ -33,7 +35,7 @@ def preprocess():
         SBOM_parser.parse_file(sbom_file)   
         sbom=SBOM_parser.sbom
         try:
-            _ = build_sbom_tree(sbom)
+            _ = build_sbom_tree(sbom, policy_files[0])
             return None
         except KeyError as e:
             return sbom_file
