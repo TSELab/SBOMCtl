@@ -622,7 +622,6 @@ class EncryptVisitor:
             #print(f"policy found for FieldNode {node.field_name}, {node.policy}.")
             
             node.encrypted_data = encrypt_data_AES(data_to_encrypt,self.__aes_key_dict[node.policy])
-            #node.encrypted_data = cpabe_encrypt(self.pk, node.policy, data_to_encrypt)
             node.field_name=NODE_REDACTED
             node.field_value=NODE_REDACTED
 
@@ -679,7 +678,6 @@ class DecryptVisitor:
         if node.encrypted_data != NODE_PUBLIC:
             try:
                 node.decrypted_data = decrypt_data_AES(node.encrypted_data, self.__decrypted_aes_keys[node.policy])
-                #node.decrypted_data = bytes(cpabe_decrypt(self.secret_key, node.encrypted_data))
 
                 # debug
                 #print(node.decrypted_data)
@@ -694,7 +692,6 @@ class DecryptVisitor:
         if node.encrypted_data != NODE_PUBLIC:
             try:
                 node.decrypted_data = decrypt_data_AES(node.encrypted_data, self.__decrypted_aes_keys[node.policy])
-                #node.decrypted_data = bytes(cpabe_decrypt(self.secret_key, node.encrypted_data))
             except Exception as e:
                 print(f"Decryption failed with error: {e}")         
         else:

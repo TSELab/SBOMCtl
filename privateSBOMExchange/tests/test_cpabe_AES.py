@@ -12,7 +12,7 @@ import cpabe
 argparser = argparse.ArgumentParser()
 # TODO: add args for the config
 # TODO: handle defaults etc
-argparser.add_argument("-o", "--original-file", type=str, required=True, help="the file to which to write the original SBOM tree")
+argparser.add_argument("-u", "--unredacted-file", type=str, required=True, help="the file to which to write the unredacted SBOM tree")
 argparser.add_argument("-r", "--redacted-file", type=str, required=True, help="the file to which to write the redacted SBOM tree")
 argparser.add_argument("-d", "--decrypted-file", type=str, required=True, help="the file to which to write the decrypted SBOM tree")
 args = argparser.parse_args()
@@ -36,7 +36,7 @@ sbom_tree = build_sbom_tree(sbom, conf.get_cpabe_policy('ip-policy'))
 
 print("done constructing tree")
 
-with open(args.original_file, "w+") as f:
+with open(args.unredacted_file, "w+") as f:
         f.write(json.dumps(sbom_tree.to_dict(), indent=4)+'\n')
 
 # encrypt node data
