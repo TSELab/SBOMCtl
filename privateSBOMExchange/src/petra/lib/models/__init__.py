@@ -386,7 +386,7 @@ class SbomNode(Node):
         self.policy = redaction_policy
         self.decrypted_policy={}
         self.encrypted_data={}
-
+        self.redacted_keys=b""
         # sameness properties
         # the plaintext_hash is needed to verify the structural congruence
         # aspect of sameness, i.e., the original SBOM structure is preserved
@@ -558,11 +558,10 @@ class MerkleVisitor:
         """
         children_hashes = b''.join(child.accept(self) for child in node.children)
 
-        redacted_keys = b""
+        
         for policy, key in node.encrypted_data.items():
-            redacted_keys += key.encode("utf-8")
-
-        data_to_hash = redacted_keys + node.purl.encode("utf-8") + node.plaintext_hash + children_hashes
+            node.redacted_keys += key.encode("utf-8")
+        data_to_hash = node.redacted_keys + node.purl.encode("utf-8") + node.plaintext_hash + children_hashes
         node.hash=digest(data_to_hash)
         return node.hash
 
