@@ -12,6 +12,8 @@ class Config:
 
         self.config_dict = dict()
         self.sbom_files = []
+        self.tree_signing_key_file = ""
+        self.tree_public_key_file = ""
         self.cpabe_key_files = dict()
         self.cpabe_mk = ""
         self.cpabe_pk = ""
@@ -68,12 +70,31 @@ class Config:
             if groups_dict != None:
                 self.cpabe_groups = groups_dict
 
+        # Get the tree signing keys, if any
+        signing_dict = self.config_dict.get("signing")
+
+        if signing_dict != None:
+            self.tree_signing_key_file = signing_dict.get("signing-key")
+            self.tree_public_key_file = signing_dict.get("public-key")
+
     def get_sbom_files(self) -> list:
         """ Returns the list of SBOM files to read into
             Petra, or an empty list if none were specified
             in the config.
         """
         return self.sbom_files
+
+    def get_tree_signing_key(self) -> str:
+        """ Returns the filename of the SBOM tree DER signing key.
+            May return None if the key file wasn't specified.
+        """
+        return self.tree_signing_key_file
+
+    def get_tree_public_key(self) -> str:
+        """ Returns the filename of the SBOM tree DER public key.
+            May return None if the key file wasn't specified.
+        """
+        return self.tree_public_key_file
 
     def get_cpabe_key_files(self) -> dict:
         """ Returns the dict containing the file paths

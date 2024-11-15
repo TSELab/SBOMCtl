@@ -65,14 +65,27 @@ cd privateSBOMExchange
 pip install -e .
 ```
 
-### Optional: SBOM datasets
+### SBOM datasets
 
-The final setup step pulls SBOM datasets from linked repos:
+The next setup step pulls SBOM datasets from linked repos:
 
 ```
 cd SBOMCtl
 git submodule update --init
 ```
+
+### SBOM signing test key generation
+
+The final setup step generates the SBOM signing and verification keys for
+Petra. Assuming you have openssl installed, generate DER format ECDSA keys:
+
+```
+cd tests
+openssl ecparam -name prime256v1 -outform der -genkey -out privkey.der -noout
+openssl ec -inform der -in privkey.der -pubout -outform der -out pubkey.der
+```
+
+Certain tests will then allow you to pass in the private and public key paths as a command-line argument.
 
 ## Petra Usage
 

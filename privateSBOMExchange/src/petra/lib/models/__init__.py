@@ -15,6 +15,7 @@ from cpabe import cpabe_encrypt,cpabe_decrypt
 from petra.lib.models.policy import PetraPolicy
 from petra.lib.crypto import Commitment, digest, DEFAULT_HASH_SIZE_BYTES
 from petra.lib.crypto import decrypt_data_AES, encrypt_data_AES
+from petra.lib.crypto import ecdsa_sign, ecdsa_sig_verify
 
 # node markers
 NODE_REDACTED="encrypted"
@@ -430,6 +431,20 @@ class SbomNode(Node):
         node_hash = digest(encrypted_keys + self.purl.encode("utf-8") + plaintext_hash + child_verif_hashes)
         
         return plaintext_hash, node_hash
+
+    def sign(self, signing_key_file: str):
+        """
+        Generates the ECDSA signature on the SbomNode hash,
+        authenticating the root of an SBOM tree.
+        """
+        self.signature = ecdsa_sign(signing_key_file, self.hash)
+
+    def verify_signature(self, pubkey_file: str) -> bool:
+        """
+        Verifies the ECDSA signature on the SbomNode hash,
+        checking the authenticity of the root of an SBOM tree.
+        """
+        return ecdsa_sig_verify(pubkey_file, self.hash, self.signature)
 
     def to_dict(self) -> dict:
         """ Serializes the node into a dict that can be

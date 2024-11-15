@@ -15,3 +15,7 @@ public-key = ""
 
 [cp-abe.groups]
 <group 1> = ["<attribute A>", "<attribute B>"]
+
+[signing]
+signing-key = ""
+public-key = ""

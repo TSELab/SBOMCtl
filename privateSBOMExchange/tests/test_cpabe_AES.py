@@ -12,9 +12,9 @@ import cpabe
 argparser = argparse.ArgumentParser()
 # TODO: add args for the config
 # TODO: handle defaults etc
-argparser.add_argument("-u", "--unredacted-file", type=str, required=True, help="the file to which to write the unredacted SBOM tree")
-argparser.add_argument("-r", "--redacted-file", type=str, required=True, help="the file to which to write the redacted SBOM tree")
-argparser.add_argument("-d", "--decrypted-file", type=str, required=True, help="the file to which to write the decrypted SBOM tree")
+argparser.add_argument("-u", "--unredacted-file", type=str, help="the file to which to write the unredacted SBOM tree")
+argparser.add_argument("-r", "--redacted-file", type=str, help="the file to which to write the redacted SBOM tree")
+argparser.add_argument("-d", "--decrypted-file", type=str, help="the file to which to write the decrypted SBOM tree")
 args = argparser.parse_args()
 
 # read in the IP policy config
@@ -36,7 +36,8 @@ sbom_tree = build_sbom_tree(sbom, conf.get_cpabe_policy('ip-policy'))
 
 print("done constructing tree")
 
-with open(args.unredacted_file, "w+") as f:
+if args.unredacted_file:
+    with open(args.unredacted_file, "w+") as f:
         f.write(json.dumps(sbom_tree.to_dict(), indent=4)+'\n')
 
 # encrypt node data
@@ -50,6 +51,9 @@ merkle_root_hash_original = sbom_tree.accept(merkle_visitor)
 
 print("done hashing tree")
 
+print("signing the tree")
+sbom_tree.sign(conf.get_tree_signing_key())
+
 # decrypt node data
 decrypt_visitor = DecryptVisitor(sk)
 decrypted_tree = copy.deepcopy(sbom_tree)
@@ -58,8 +62,11 @@ print("done decrypting")
 
 print("saving decrypted tree to disk")
 
-with open(args.decrypted_file, "w+") as f:
+if args.decrypted_file:
+    with open(args.decrypted_file, "w+") as f:
         f.write(json.dumps(decrypted_tree.to_dict(), indent=4)+'\n')
+
+print("decrypted tree signature verification passed? %s" % str(decrypted_tree.verify_signature(conf.get_tree_public_key())))
 
 # verify decrypted tree is consistent 
 # with original sbom tree

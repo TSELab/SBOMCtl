@@ -12,3 +12,6 @@
 build/
 __pycache__
 *.egg-info
+# let's ignore any crypto keys/certs
+*.der
+*.pem
