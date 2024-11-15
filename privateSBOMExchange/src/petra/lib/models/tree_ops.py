@@ -188,11 +188,8 @@ def get_membership_proof(root, target_hash):
         elif isinstance(node, ComplexNode):
             prefix = (f"{node.encrypted_data}{node.policy}{node.complex_type}").encode("utf-8")+node.plaintext_commit.value+node.plaintext_hash
         else: #field node
-            prefix = node.encrypted_data.encode("utf-8")+node.policy.encode("utf-8")
-            if node.encrypted_data != NODE_PUBLIC:
-                prefix += NODE_REDACTED.encode("utf-8")
-            else:
-                prefix += (f"{node.field_name}:{node.field_value}").encode("utf-8")
+            prefix=node.serialize_for_hashing(node.serialize_field_data(), node.plaintext_commit.value)
+
         return prefix
     
     def create_sub_path(node, index, prefix):

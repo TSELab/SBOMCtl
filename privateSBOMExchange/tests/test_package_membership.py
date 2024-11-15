@@ -22,7 +22,7 @@ SBOM_parser.parse_file(sbom_file)
 
 # build sbom tree
 sbom=SBOM_parser.sbom
-sbom_tree = build_sbom_tree(sbom, conf.get_cpabe_policy('vuln-policy'),)
+sbom_tree = build_sbom_tree(sbom, conf.get_cpabe_policy('vuln-policy'))
 
 encrypt_visitor = EncryptVisitor(pk)
 sbom_tree.accept(encrypt_visitor)
