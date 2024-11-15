@@ -1,7 +1,7 @@
 import hashlib
 from lib4sbom.parser import SBOMParser
 
-from petra.lib.models import Node, SbomNode, FieldNode, ComplexNode
+from petra.lib.models import NODE_PUBLIC, NODE_REDACTED, Node, SbomNode, FieldNode, ComplexNode
 from petra.lib.models.policy import PetraPolicy
 from petra.lib.crypto import digest
 
@@ -126,12 +126,17 @@ class GetTargetNodes:
     """Visitor that collects the data and hash of each node.
     This is used to test for membership"""
 
-    def __init__(self):
+    def __init__(self,field_to_search_for:bytes):
         self.hashes = []
-
-    def visit_field_node(self, node):
+        self.field_content=field_to_search_for
+        self.item_hash:bytes=None
+    def visit_field_node(self, node:FieldNode):
         # Append the hash if it existsr
         try:
+            if node.decrypted_data !=None:
+                if (node.decrypted_data).endswith(self.field_content):
+                    #self.item_hash=node.hash
+                    self.item_hash=digest(node.serialize_for_hashing(node.serialize_field_data(), node.plaintext_commit.value))
             node_hash = node.hash
             self.hashes.append(node_hash)
         except AttributeError:
@@ -157,7 +162,14 @@ class GetTargetNodes:
         Called after the tree traversal is complete.
         """
         return self.hashes
-
+    
+    def get_target_hash(self):
+        """
+        Returns the collected hashes to the caller.
+        Called after the tree traversal is complete.
+        """
+        return self.item_hash
+    
 def get_membership_proof(root, target_hash):
     """
     Generate a membership proof for a target hash within an SBOM tree.
@@ -172,11 +184,13 @@ def get_membership_proof(root, target_hash):
     def get_prefix(node):
         """This is same prefix used by MerkleVisitor during hashing"""
         if isinstance(node, SbomNode):
-            prefix = (f"{node.purl}").encode() 
+            prefix = node.redacted_keys+(node.purl).encode("utf-8") +node.plaintext_hash
         elif isinstance(node, ComplexNode):
-            prefix = (f"{node.encrypted_data}{node.complex_type}{node.policy}").encode()
+            #prefix = (f"{node.encrypted_data}{node.policy}{node.complex_type}").encode("utf-8")+node.plaintext_commit.value+node.plaintext_hash
+            prefix=node.serialize_for_hashing(node.plaintext_commit.value,node.plaintext_hash,b"")
         else: #field node
-            prefix = b''
+            prefix=node.serialize_for_hashing(node.serialize_field_data(), node.plaintext_commit.value)
+
         return prefix
     
     def create_sub_path(node, index, prefix):
