@@ -184,9 +184,10 @@ def get_membership_proof(root, target_hash):
     def get_prefix(node):
         """This is same prefix used by MerkleVisitor during hashing"""
         if isinstance(node, SbomNode):
-            prefix = node.redacted_keys+(f"{node.purl}").encode("utf-8") +node.plaintext_hash 
+            prefix = node.redacted_keys+(node.purl).encode("utf-8") +node.plaintext_hash
         elif isinstance(node, ComplexNode):
-            prefix = (f"{node.encrypted_data}{node.policy}{node.complex_type}").encode("utf-8")+node.plaintext_commit.value+node.plaintext_hash
+            #prefix = (f"{node.encrypted_data}{node.policy}{node.complex_type}").encode("utf-8")+node.plaintext_commit.value+node.plaintext_hash
+            prefix=node.serialize_for_hashing(node.plaintext_commit.value,node.plaintext_hash,b"")
         else: #field node
             prefix=node.serialize_for_hashing(node.serialize_field_data(), node.plaintext_commit.value)
 
