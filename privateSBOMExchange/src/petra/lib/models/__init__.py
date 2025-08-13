@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import List
+from ast import Dict
+from typing import Any, List
 
 from smt.tree import TreeMemoryStore
 from smt.tree import SparseMerkleTree
@@ -51,7 +52,7 @@ class FieldNode(Node):
         The policy associated with this field, might be set by EncryptVisitor based on the policy
 
     """
-    def __init__(self, field:str, value:str, policy:str):
+    def __init__(self, field:str, value:str, policy=None):
         """Initialize a FieldNode.
 
         Parameters
@@ -64,7 +65,7 @@ class FieldNode(Node):
         self.field_name = field
         self.field_value = str(value) # need this hack bc sometimes we still pass in non-strings it seems
         self.encrypted_data:str=NODE_PUBLIC
-        self.decrypted_data:bytes=None
+        self.decrypted_data:bytes=""
         self.policy:str=policy
         self.hash:bytes = None
 
@@ -186,9 +187,12 @@ class FieldNode(Node):
         n.hash = bytes.fromhex(node_dict['hash'])
         n.plaintext_commit = Commitment.from_hex(node_dict['plaintext_commit'])
         n.encrypted_data = node_dict['encrypted_data']
-        n.decrypted_data = bytes.fromhex(node_dict['decrypted_data'])
-        n.policy = node_dict['policy']
-
+        n.decrypted_data = (
+            bytes.fromhex(node_dict['decrypted_data'])
+            if node_dict.get('decrypted_data') is not None
+            else None
+        )        
+        n.policy = node_dict.get('policy')
         return n
 
 
@@ -204,7 +208,7 @@ class ComplexNode(Node):
     children : List[FieldNode]
         A list of child FieldNode instances.
     """
-    def __init__(self, complex_type:str, policy:str, children:List[FieldNode]):
+    def __init__(self, complex_type:str,children:List[FieldNode], policy=None):
         """Initialize a ComplexNode.
 
         Parameters
@@ -342,8 +346,12 @@ class ComplexNode(Node):
         
         n = ComplexNode(node_dict['type'], children)
         n.encrypted_data = node_dict['encrypted_data']
-        n.decrypted_data = node_dict['decrypted_data']
-        n.policy = node_dict['policy']
+        n.decrypted_data = (
+            bytes.fromhex(node_dict['decrypted_data'])
+            if node_dict.get('decrypted_data') is not None
+            else None
+        )        
+        n.policy = node_dict.get('policy')
         n.hash = bytes.fromhex(node_dict['hash'])
 
         n.plaintext_commit = Commitment.from_hex(node_dict['plaintext_commit'])
@@ -370,7 +378,7 @@ class SbomNode(Node):
     purl : str
         package url 
     """
-    def __init__(self, purl:str, children:List[Node], redaction_policy:dict=None):
+    def __init__(self, purl:str, children:List[Node], redaction_policy: dict | None = None):
         """Initialize an SbomNode.
 
         Parameters
@@ -384,7 +392,7 @@ class SbomNode(Node):
         self.children = children
         self.signature=None
         self.hash:bytes = None
-        self.policy = redaction_policy
+        self.policy: dict[str, Any] = redaction_policy or {}
         self.decrypted_policy={}
         self.encrypted_data={}
         self.redacted_keys=b""
@@ -669,8 +677,8 @@ class EncryptVisitor:
         # Encrypt AES keys
         for policy, key in node.policy.items():
             # debug
-            #print("encrypting key: %s" % node.policy[policy].hex())
-
+            print("encrypting key: %s" % node.policy[policy].hex())
+            print("key %s"%self.pk)
             node.encrypted_data[policy] = cpabe_encrypt(self.pk, policy, key)
             node.policy[policy]=NODE_REDACTED
 
