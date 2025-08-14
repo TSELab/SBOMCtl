@@ -19,6 +19,8 @@ class Config:
         self.cpabe_pk = ""
         self.cpabe_policy_files = dict()
         self.cpabe_groups = dict()
+        self.kms_service_url = ""     
+        self.namespace = dict() 
 
         # we may want to catch some exceptions here
         with open(file_path, "rb") as f:
@@ -76,6 +78,16 @@ class Config:
         if signing_dict != None:
             self.tree_signing_key_file = signing_dict.get("signing-key")
             self.tree_public_key_file = signing_dict.get("public-key")
+        
+        # Get the KMS service URL, if any
+        kms_dict = self.config_dict.get("kms")
+        if kms_dict != None:
+            self.kms_service_url = kms_dict.get("kms_service_url", "")
+
+        # Get the namespace for email domain, if any
+        namespace_dict = self.config_dict.get("namespace", {})
+        if namespace_dict != None:
+            self.namespace = namespace_dict
 
     def get_sbom_files(self) -> list:
         """ Returns the list of SBOM files to read into
@@ -126,3 +138,15 @@ class Config:
             May be empty.
         """
         return self.cpabe_groups.get(group_name)
+    
+    def get_kms_service_url(self) -> str:
+        """ Returns the KMS service URL, if specified.
+            May be empty.
+        """
+        return self.kms_service_url
+    
+    def get_namespace_for_domain(self, domain: str) -> str | None:
+        """ Returns the namespace for a given email domain.
+            Returns None if the domain is not found in the namespace config.
+        """
+        return self.namespace.get(domain, None)
