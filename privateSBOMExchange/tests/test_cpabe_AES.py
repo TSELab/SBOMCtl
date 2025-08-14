@@ -62,7 +62,11 @@ print("signing the tree")
 sbom_tree.sign(conf.get_tree_signing_key())
 
 # decrypt node data
-sk = requests.post("%s/onboard" % kms_service_url).json().get("secret_key")
+response = requests.post("%s/onboard" % kms_service_url)
+if response.status_code != 200:
+    raise Exception(f"Failed to get secret key: {response.text}")
+sk = response.json().get("secret_key")
+
 decrypt_visitor = DecryptVisitor(sk)
 decrypted_tree = copy.deepcopy(sbom_tree)
 decrypted_tree.accept(decrypt_visitor)
