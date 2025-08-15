@@ -378,7 +378,7 @@ class SbomNode(Node):
     purl : str
         package url 
     """
-    def __init__(self, purl:str, children:List[Node], redaction_policy: dict | None = None):
+    def __init__(self, purl:str, children:List[Node], redaction_policy: dict[str, Any] | None = None):
         """Initialize an SbomNode.
 
         Parameters
