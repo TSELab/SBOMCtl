@@ -208,7 +208,7 @@ class ComplexNode(Node):
     children : List[FieldNode]
         A list of child FieldNode instances.
     """
-    def __init__(self, complex_type:str,children:List[FieldNode], policy=None):
+    def __init__(self, complex_type:str,children:List[FieldNode], policy:dict[str, Any] | None=None):
         """Initialize a ComplexNode.
 
         Parameters
