@@ -8,8 +8,6 @@ from petra.lib.models.tree_ops import build_sbom_tree, verify_sameness
 from petra.lib.models import MerkleVisitor, EncryptVisitor, DecryptVisitor
 from petra.lib.util.config import Config
 
-import cpabe
-
 argparser = argparse.ArgumentParser()
 # TODO: add args for the config
 # TODO: handle defaults etc
@@ -27,7 +25,7 @@ sbom_file = conf.get_sbom_files()[0]
 kms_conf = Config("./config/kms.conf")
 kms_service_url = kms_conf.get_kms_service_url()
 
-response = requests.get("%s/public-key" % kms_service_url)
+response = requests.get(f"{kms_service_url}/public-key")
 if response.status_code != 200:
     print("Failed to get public key")
     exit(1)
@@ -62,7 +60,7 @@ print("signing the tree")
 sbom_tree.sign(conf.get_tree_signing_key())
 
 # decrypt node data
-response = requests.post("%s/onboard" % kms_service_url)
+response = requests.post(f"{kms_service_url}/onboard")
 if response.status_code != 200:
     raise Exception(f"Failed to get secret key: {response.text}")
 sk = response.json().get("secret_key")

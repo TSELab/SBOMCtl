@@ -1,8 +1,6 @@
-# kms/kms_service.py
-
 from flask import Flask, jsonify
-from petra.lib.auth.oidc import authenticate_and_get_id_token
-from petra.lib.auth.verify_oidc import verify_id_token
+from petra.lib.auth.google_oidc import authenticate_and_get_id_token
+from petra.lib.auth.verify import verify_id_token
 from petra.lib.util.config import Config
 from urllib.parse import urlparse
 import cpabe
@@ -36,10 +34,6 @@ def get_user_attributes(email: str) -> list[str]:
         return []
     conf = Config(f"./config/{namespace}-policy.conf")
     return conf.get_cpabe_group(f"{namespace}-group")
-
-@app.route("/")
-def health():
-    return jsonify({"status": "KMS is running"}), 200
 
 @app.route("/public-key", methods=["GET"])
 def get_public_key():
