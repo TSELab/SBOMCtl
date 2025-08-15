@@ -52,7 +52,7 @@ class FieldNode(Node):
         The policy associated with this field, might be set by EncryptVisitor based on the policy
 
     """
-    def __init__(self, field:str, value:str, policy=None):
+    def __init__(self, field:str, value:str, policy:dict[str, Any] None=None):
         """Initialize a FieldNode.
 
         Parameters
