@@ -85,7 +85,7 @@ class Config:
             self.kms_service_url = kms_dict.get("kms_service_url", "")
 
         # Get the namespace for email domain, if any
-        namespace_dict = self.config_dict.get("namespace", {})
+        namespace_dict = self.config_dict.get("namespace-map", {})
         if namespace_dict != None:
             self.namespace = namespace_dict
 
@@ -145,8 +145,8 @@ class Config:
         """
         return self.kms_service_url
     
-    def get_namespace_for_domain(self, domain: str) -> str | None:
-        """ Returns the namespace for a given email domain.
+    def get_attributes_for_namespace(self, domain: str) -> str | None:
+        """ Returns the attributes mapped to a given domain namespace
             Returns None if the domain is not found in the namespace config.
         """
         return self.namespace.get(domain, None)

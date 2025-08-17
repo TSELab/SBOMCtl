@@ -115,7 +115,7 @@ We also provide the following example configurations:
 * `config/tiny.conf`: a config for testing Petra with a small SBOM and simple redaction policy
 * `config/ip-policy.conf`: a config for testing Petra with a sample IP protection policy
 * `config/weaknesses.conf`: a config for testing Petra with a sample vulnerability info protection policy
-* `attribute-group-namespace.conf`: a config for attribute namespace mapping with sample domain mappings
+* `attribute-namespace.conf`: a config for attribute namespace mapping with sample domain mappings
 * `kms.conf`: a config for the key management endpoint
 
 ### Start the KMS service

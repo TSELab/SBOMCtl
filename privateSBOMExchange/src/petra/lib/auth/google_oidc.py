@@ -10,7 +10,8 @@ AUTHORIZATION_BASE_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN_URL = "https://www.googleapis.com/oauth2/v4/token"
 SCOPE = [
     "openid",
-    "https://www.googleapis.com/auth/userinfo.email"
+    "https://www.googleapis.com/auth/userinfo.email",
+    "https://www.googleapis.com/auth/userinfo.profile"
 ]
 #The registered redirect URI for the OAuth 2.0 client
 REDIRECT_URI = "http://127.0.0.1:7000/"
