@@ -128,3 +128,62 @@ python tests/test_models.py
 
 Should showcase an encryption and selective decription of target sbom --- make
 sure sbom\_data has the sboms you need!
+
+### CLI 
+
+The Petra CLI provides commands for secure SBOM encryption, decryption, and verification.
+
+All commands are available through the petra entrypoint:
+python -m petra.cli <command> [OPTIONS]
+
+#### Fetch a Decryption Key
+
+Retrieve a CP-ABE secret key from the Key Management Service (KMS) and save it to a local file.
+The secret key is later used with decrypt.
+
+petra get-decryption-key --output-file ./keys/consumer_sk
+--output-file: Path to save the CP-ABE secret key.
+
+#### Encrypt an SBOM
+
+Encrypt a plaintext SBOM under a CP-ABE policy, generate Merkle proofs, sign the tree, and save a redacted version.
+
+petra encrypt \
+  --input-file ./sboms/plain_spdx.json \
+  --policy ip-policy \
+  --config-file ./config/petra.conf \
+  --output-redacted ./sboms/redacted_spdx.json
+--input-file: Path to the plaintext SBOM (SPDX or CycloneDX).
+--policy: Policy name from the config (e.g., ip-policy).
+--config-file: Path to Petra configuration file (contains signign/public keys).
+--output-redacted: Output file for the redacted SBOM tree.
+
+#### Decrypt an SBOM
+
+Decrypt a redacted SBOM using your CP-ABE secret key.
+
+petra decrypt \
+  --input-file ./sboms/redacted_spdx.json \
+  --output-file ./sboms/decrypted_spdx.json \
+  --config ./config/petra.conf \
+  --key-file ./keys/consumer_sk
+--input-file: Path to encrypted/redacted SBOM JSON.
+--output-file: Path to save decrypted SBOM.
+--config: Petra config (for signature verification).
+--key-file: CP-ABE secret key file (fetched earlier).
+
+#### Verify Sameness
+
+Compare a decrypted SBOM against the original plaintext SBOM to ensure no tampering.
+
+petra verify-sameness \
+  --decrypted-sbom ./sboms/decrypted_spdx.json \
+  --original-sbom ./sboms/plain_spdx.json
+
+#### Verify Membership Proofs
+
+Verify Merkle-style membership proofs for every node in a redacted SBOM.
+
+petra verify-membership \
+  --sbom-file ./sboms/redacted_spdx.json
+
