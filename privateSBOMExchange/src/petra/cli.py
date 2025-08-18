@@ -1,24 +1,17 @@
-# cli.py
 import json
 import copy
 from pathlib import Path
-import click
+from cryptography.hazmat.primitives import serialization
 
+import click
+import requests
 from lib4sbom.parser import SBOMParser
 
 from petra.lib.models.tree_ops import build_sbom_tree, verify_sameness
 from petra.lib.models import MerkleVisitor, EncryptVisitor, DecryptVisitor,SbomNode
 from petra.lib.util.config import Config
-from petra.lib.models.tree_ops import serialize_tree
-
-#from petra.lib.models import SBOMTree
-
+from petra.lib.models.tree_ops import serialize_tree, GetTargetNodes, get_membership_proof, verify_membership_proof
 import cpabe
-
-
-def _write_json(path: Path, obj):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(obj, indent=2) + "\n")
 
 
 @click.group()
@@ -30,21 +23,35 @@ def cli(ctx, verbose):
     ctx.obj["verbose"] = verbose
 
 
-@cli.command("keygen")
-@click.option("--kms-url", help="KMS URL (overrides config).")
-@click.option("--aud", help="OIDC audience (overrides config).")
+@cli.command("get-decryption-key")
+@click.option("--output-file","output_file", help="Path to write the CP-ABE secret key.")
 @click.pass_context
-def keygen_cmd(ctx, kms_url, aud):
+def fetch_key_from_kms(ctx,output_file):
     """
-    Fetch/generate a CP-ABE secret key via KMS (or local dev fallback).
-    """
-    kms_url = kms_url or conf.get_KMS_Server_url()
-    aud = aud or conf.get_OIDC_service_audience()
+    _summary_
+    Fetch a CP-ABE decryption (secret) key from the KMS and save it to a file.
 
-    # TODO: replace with real KMS flow:
-    #   key = fetch_key_from_kms(kms_url, aud=aud)
-    key = {"mock": True, "kms_url": kms_url, "aud": aud}
-    click.echo(json.dumps(key))
+    This command:
+      1. Retrieves the KMS public key.
+      2. Sends an onboarding request to obtain the user's CP-ABE secret key.
+      3. Writes the received secret key to ``--output-file``.
+
+    Raises:
+        Exception: If the KMS onboarding or public key fetch fails.
+    """
+    kms_conf = Config("./config/kms.conf")
+    kms_service_url = kms_conf.get_kms_service_url()
+    response = requests.get("%s/public-key" % kms_service_url)
+    if response.status_code != 200:
+        print("Failed to get public key")
+        exit(1)
+    pk = response.json()
+    response = requests.post("%s/onboard" % kms_service_url)
+    if response.status_code != 200:
+        raise Exception(f"Failed to get secret key: {response.text}")
+    sk = response.json().get("secret_key")  
+    with open(output_file, "w", encoding="utf-8") as f:
+        f.write(sk)
 
 @cli.command("encrypt")
 @click.option("--input-file","input_file", required=True, help="Path to plaintext SBOM.")
