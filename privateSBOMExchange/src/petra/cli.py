@@ -184,19 +184,79 @@ def decrypt_cmd(input_file, output_file, config_path, key_file):
     click.echo(f"Decrypted SBOM written to {output_file}")
 
 
-@cli.command("verify")
-@click.option("--input-redacted", type=click.Path(exists=True), required=True, help="Path to redacted (encrypted) SBOM tree JSON.")
+@cli.command("verify-sameness")
+@click.option("--decrypted-sbom","decrypted_sbom_file_name", type=click.Path(exists=True), required=True, help="Path to decrypted SBOM tree JSON.")
+@click.option("--original-sbom", "orignal_sbom_file_name",type=click.Path(exists=True), required=True, help="Path to original SBOM tree JSON.")
 @click.pass_context
-def verify_cmd(input_redacted):
+def verify_sameness_cmd(ctx,decrypted_sbom_file_name, orignal_sbom_file_name):
     """
-    Verify signatures on a redacted tree (no decryption).
-    """
-    redacted = json.loads(Path(input_redacted).read_text())
-    tree = SbomNode.from_dict(redacted)
+    Compare a decrypted SBOM tree with its original unencrypted version to verify sameness.
+    This command loads both the decrypted and the original SBOM JSON representations,
+    reconstructs them into `SbomNode` tree objects, and runs a full structural and content
+    comparison using `verify_sameness`. It returns whether the decrypted version exactly
+    matches the original.
 
-    if not tree.verify_signature(conf.get_tree_public_key()):
-        raise click.ClickException("Signature verification failed.")
-    click.echo("Signature verification passed.")
+    Args:
+        decrypted_sbom_file_name (str): Path to the JSON file containing the decrypted SBOM tree.
+        orignal_sbom_file_name (str): Path to the JSON file containing the original unencrypted SBOM tree.
+
+    Raises:
+        FileNotFoundError: If either file does not exist.
+        json.JSONDecodeError: If either file contains invalid JSON.
+        ValueError: If SBOM tree reconstruction fails due to malformed input.
+    """
+    # Load decrypted SBOM tree
+    with open(decrypted_sbom_file_name, "r", encoding="utf-8") as f:
+        decrypted_tree_dict = json.load(f)
+
+    # Rebuild decrypted tree object
+    decrypted_sbom_tree = SbomNode.from_dict(decrypted_tree_dict)
+    
+    # Load original SBOM tree
+    with open(orignal_sbom_file_name, "r", encoding="utf-8") as f:
+        orignal_tree_dict = json.load(f)
+
+    # Rebuild original tree object
+    orignal_sbom_tree = SbomNode.from_dict(orignal_tree_dict)
+
+    passed = verify_sameness(orignal_sbom_tree, decrypted_sbom_tree)
+    click.echo(f"Full tree sameness verification passed? {passed}")
+
+
+@cli.command("verify-membership")
+@click.option("--sbom-file","sbom_file_name", type=click.Path(exists=True), required=True, help="Path to SBOM tree JSON.")
+@click.pass_context
+def verify_membership_cmd(ctx,sbom_file_name):
+    """
+    Verify membership proofs for every node in an SBOM tree.
+
+    This loads a JSON-encoded SBOM from `sbom_file_name`, reconstructs the
+    `SbomNode` tree, gathers the content hashes for all nodes, and for each
+    node computes and verifies a Merkle-style membership proof against the
+    SBOM's root hash. The function asserts that every proof verifies.
+
+    Args:
+        sbom_file_name (str): Path to the SBOM JSON file to verify.
+
+    Raises:
+        AssertionError: If any node's membership proof fails verification.
+    """
+    # Load SBOM 
+    with open(sbom_file_name, "r", encoding="utf-8") as f:
+        sbom_dict = json.load(f)
+
+    # Rebuild tree object
+    sbom_tree = SbomNode.from_dict(sbom_dict)
+   
+    # Retrieve hashes of all nodes in the tree
+    hash_hunter = GetTargetNodes()
+    sbom_tree.accept(hash_hunter)
+    target_hashes = hash_hunter.get_hashes()
+
+    #Get and verify membership proof for each node in the tree
+    for hash in target_hashes:
+        proof = get_membership_proof(sbom_tree, hash)
+        assert verify_membership_proof(sbom_tree.hash, hash, proof) == True
 
 
 if __name__ == "__main__":  
