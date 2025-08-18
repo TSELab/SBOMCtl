@@ -3,16 +3,7 @@ from __future__ import annotations
 from ast import Dict
 from typing import Any, List
 
-from smt.tree import TreeMemoryStore
-from smt.tree import SparseMerkleTree
-from smt.utils import DEFAULTVALUE, PLACEHOLDER
-from smt.proof import verify_proof
-from smt.tree import SparseMerkleTree
-
-from lib4sbom.parser import SBOMParser
-
 from cpabe import cpabe_encrypt,cpabe_decrypt
-
 from petra.lib.models.policy import PetraPolicy
 from petra.lib.crypto import Commitment, digest, DEFAULT_HASH_SIZE_BYTES
 from petra.lib.crypto import decrypt_data_AES, encrypt_data_AES
@@ -65,7 +56,7 @@ class FieldNode(Node):
         self.field_name = field
         self.field_value = str(value) # need this hack bc sometimes we still pass in non-strings it seems
         self.encrypted_data:str=NODE_PUBLIC
-        self.decrypted_data:bytes=""
+        self.decrypted_data:bytes=None
         self.policy:str=policy
         self.hash:bytes = None
 
@@ -184,11 +175,12 @@ class FieldNode(Node):
             raise ValueError('Expected FieldNode type')
         
         n = FieldNode(node_dict['name'], node_dict['value'])
-        n.hash = bytes.fromhex(node_dict['hash'])
+        hash_hex = node_dict.get('hash')
+        n.hash = bytes.fromhex(hash_hex) if hash_hex else None
         n.plaintext_commit = Commitment.from_hex(node_dict['plaintext_commit'])
         n.encrypted_data = node_dict['encrypted_data']
-        if (n.decrypted_data):
-            n.decrypted_data = bytes.fromhex(node_dict.get('decrypted_data')) 
+        decrypted_hex = node_dict.get('decrypted_data')
+        n.decrypted_data = bytes.fromhex(decrypted_hex) if decrypted_hex else None
         n.policy = node_dict.get('policy')
         return n
 
@@ -343,11 +335,11 @@ class ComplexNode(Node):
         
         n = ComplexNode(node_dict['type'], children)
         n.encrypted_data = node_dict['encrypted_data']
-        if (n.decrypted_data):
-            n.decrypted_data = bytes.fromhex(node_dict.get('decrypted_data'))      
+        decrypted_hex = node_dict.get('decrypted_data')
+        n.decrypted_data = bytes.fromhex(decrypted_hex) if decrypted_hex else None
         n.policy = node_dict.get('policy')
-        n.hash = bytes.fromhex(node_dict['hash'])
-
+        hash_hex = node_dict.get('hash')
+        n.hash = bytes.fromhex(hash_hex) if hash_hex else None
         n.plaintext_commit = Commitment.from_hex(node_dict['plaintext_commit'])
         n.plaintext_hash = bytes.fromhex(node_dict['plaintext_hash'])
 
@@ -499,8 +491,9 @@ class SbomNode(Node):
             children.append(child)
         
         n = SbomNode(node_dict['purl'], children)
-        n.hash = bytes.fromhex(node_dict['hash'])
-
+        #n.hash = bytes.fromhex(node_dict.get('hash'))
+        hash_hex = node_dict.get('hash')
+        n.hash = bytes.fromhex(hash_hex) if hash_hex else None
         n.plaintext_hash = bytes.fromhex(node_dict['plaintext_hash'])
 
         if node_dict['signature'] == "":

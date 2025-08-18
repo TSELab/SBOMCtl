@@ -92,6 +92,12 @@ def encrypt_cmd(ctx, input_file, policy_name,conf_file,output_redacted):
     click.echo(f"policy object:{policy_path}")
     sbom_tree = build_sbom_tree(sbom, policy_path)
 
+    original_json_tree = json.dumps(serialize_tree(sbom_tree), indent=4)
+    with open("../original_tree", "w", encoding="utf-8") as f:
+        f.write(original_json_tree)
+    click.echo(f"Original SBOM written to ../original_tree")
+
+        
     # Encrypt & hash
     pk, mk = cpabe.cpabe_setup()
     #sk = cpabe.cpabe_keygen(pk, mk, conf.get_cpabe_group('ip-group'))
@@ -104,9 +110,8 @@ def encrypt_cmd(ctx, input_file, policy_name,conf_file,output_redacted):
     sbom_tree.accept(MerkleVisitor())
     sbom_tree.sign(conf.get_tree_signing_key())
 
-    #  Write output
+    #  Write encrypted tree to file
     json_tree = json.dumps(serialize_tree(sbom_tree), indent=4)
-
     with open(output_redacted, "w", encoding="utf-8") as f:
         f.write(json_tree)
 
@@ -137,13 +142,7 @@ def decrypt_cmd(input_file, output_file, config_path, key_file):
 
     Signature verification failures will abort the process.
     """
-    conf = Config(str(config_path))
-
-    # Fetch key
-    if key_file:
-        with open(key_file, "rb") as f:
-            sk = f.read()
-            
+    conf = Config(str(config_path))   
     # Load encrypted SBOM tree
     with open(input_file, "r", encoding="utf-8") as f:
         encrypted_tree_dict = json.load(f)
@@ -164,8 +163,9 @@ def decrypt_cmd(input_file, output_file, config_path, key_file):
     decrypted_tree.accept(decrypt_visitor)
 
     # Save decrypted tree
+    json_tree = json.dumps(serialize_tree(decrypted_tree), indent=4)
     with open(output_file, "w", encoding="utf-8") as f:
-        f.write(json.dumps(decrypted_tree.to_dict(), indent=4) + "\n")
+        f.write(json_tree)
 
     click.echo(f"Decrypted SBOM written to {output_file}")
 
@@ -185,11 +185,6 @@ def verify_sameness_cmd(ctx,decrypted_sbom_file_name, orignal_sbom_file_name):
     Args:
         decrypted_sbom_file_name (str): Path to the JSON file containing the decrypted SBOM tree.
         orignal_sbom_file_name (str): Path to the JSON file containing the original unencrypted SBOM tree.
-
-    Raises:
-        FileNotFoundError: If either file does not exist.
-        json.JSONDecodeError: If either file contains invalid JSON.
-        ValueError: If SBOM tree reconstruction fails due to malformed input.
     """
     # Load decrypted SBOM tree
     with open(decrypted_sbom_file_name, "r", encoding="utf-8") as f:
