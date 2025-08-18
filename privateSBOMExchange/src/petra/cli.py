@@ -83,25 +83,16 @@ def encrypt_cmd(ctx, input_file, policy_name,conf_file,output_redacted):
     conf = Config(str(conf_file))
 
     # SBOM parsing
-    sbom_path = Path(input_file)
-    if not sbom_path.exists():
-        raise click.ClickException(f"SBOM file not found: {sbom_path}")
-
     parser = SBOMParser()
-    parser.parse_file(str(sbom_path))
+    parser.parse_file(input_file)
     sbom = parser.sbom
 
     # Build tree
-    click.echo(f"policy conf:{conf}")
     policy_path = conf.get_cpabe_policy(policy_name)
     click.echo(f"policy object:{policy_path}")
     sbom_tree = build_sbom_tree(sbom, policy_path)
 
     # Encrypt & hash
-    # TODO: put right keys in the path of pk,mk in config files and remove cpabe_setup below
-    pk = conf.get_cpabe_public_key()
-    mk = conf.get_cpabe_master_key()
-    click.echo(f"mk:{mk}")
     pk, mk = cpabe.cpabe_setup()
     #sk = cpabe.cpabe_keygen(pk, mk, conf.get_cpabe_group('ip-group'))
     #with open("../private_key", "w", encoding="utf-8") as f:
@@ -160,22 +151,17 @@ def decrypt_cmd(input_file, output_file, config_path, key_file):
     # Rebuild tree object
     encrypted_sbom_tree = SbomNode.from_dict(encrypted_tree_dict)
 
-
+    # Verify signature 
+    if not encrypted_sbom_tree.verify_signature(conf.get_tree_public_key()):
+        raise click.ClickException("Encrypted tree signature verification failed.")
+    click.echo(f"Encrypted tree signature verification passed")
+    
     # Decrypt node data
     with open(key_file, "r", encoding="utf-8") as f:
         sk = f.read()
     decrypt_visitor = DecryptVisitor(sk)
     decrypted_tree = copy.deepcopy(encrypted_sbom_tree)
     decrypted_tree.accept(decrypt_visitor)
-
-    # Verify signature (optional but recommended)
-    sig_ok = decrypted_tree.verify_signature(conf.get_tree_public_key())
-    click.echo(f"Decrypted tree signature verification passed? {sig_ok}")
-
-    # Verify sameness (optional check)
-    # This only works if you still have the original unencrypted tree to compare against
-    #passed = verify_sameness(original_tree, decrypted_tree)
-    # click.echo(f"Full tree sameness verification passed? {passed}")
 
     # Save decrypted tree
     with open(output_file, "w", encoding="utf-8") as f:
