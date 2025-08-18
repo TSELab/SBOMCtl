@@ -126,7 +126,7 @@ class GetTargetNodes:
     """Visitor that collects the data and hash of each node.
     This is used to test for membership"""
 
-    def __init__(self,field_to_search_for:bytes):
+    def __init__(self,field_to_search_for:bytes=None):
         self.hashes = []
         self.field_content=field_to_search_for
         self.item_hash:bytes=None
