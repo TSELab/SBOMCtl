@@ -61,7 +61,23 @@ def fetch_key_from_kms(ctx,output_file):
 @click.pass_context
 def encrypt_cmd(ctx, input_file, policy_name,conf_file,output_redacted):
     """
-    Build tree, encrypt per policy, Merkle-hash, and sign.
+    _summary_
+    Parse a plaintext SBOM, build its tree, encrypt according to a CP-ABE policy,
+    generate a Merkle root hash, sign the tree, and save the redacted/encrypted SBOM.
+
+    This command:
+      1. Load Petra configuration from ``conf_file`` (contains CP-ABE keys, policies, signing keys).
+      2. Parse the plaintext SBOM from ``input_file``.
+      3. Retrieve the CP-ABE policy identified by ``policy_name`` from the configuration.
+      4. Build the SBOM tree.
+      5. Encrypt the tree’s data fields using CP-ABE according to the policy with the public key.
+      6. Compute Merkle hashes for all nodes.
+      7. Sign the tree with the configured signing key.
+      8. Serialize the resulting encrypted SBOM tree to JSON.
+      9. Write the JSON to ``output_redacted``.
+
+    Raises:
+        click.ClickException: If the SBOM file does not exist.
     """
     click.echo(f"config path: {conf_file}")
     conf = Config(str(conf_file))
@@ -116,7 +132,20 @@ def encrypt_cmd(ctx, input_file, policy_name,conf_file,output_redacted):
 @click.option("--key-file","key_file", required=True, type=click.Path(exists=True),
               help="Path to CP-ABE secret key file")
 def decrypt_cmd(input_file, output_file, config_path, key_file):
-    """Decrypt an SBOM, enforcing revocation/temporal rules."""
+    """
+    Decrypt an encrypted/redacted SBOM file using a CP-ABE secret key.
+
+    This command:
+      1. Loads the encrypted SBOM JSON from --input-file.
+      2. Loads the Petra configuration from --config to get the public key for signature checks.
+      3. Loads the CP-ABE secret key from --key-file, it assumes the user already obtained it 
+      from the key server using get-decryption-key command.
+      4. Uses DecryptVisitor with the secret key to recover original node data.
+      5. Verifies the decrypted tree's signature for consistency.
+      6. Writes the fully decrypted SBOM to --output-file in JSON format.
+
+    Signature verification failures will abort the process.
+    """
     conf = Config(str(config_path))
 
     # Fetch key
