@@ -22,7 +22,7 @@ def build_sbom_tree(parser:SBOMParser, policy_file: str=None) -> SbomNode:
     for key, value in document_info.items()
     if not key.startswith('_') # Exclude internal attributes
     ]
-    root_children.append(ComplexNode(doc_type, doc_policy, doc_fields))
+    root_children.append(ComplexNode(doc_type, doc_fields,doc_policy))
     
     # Create internal node for each package
     pkgs=parser.get_packages()
@@ -36,7 +36,7 @@ def build_sbom_tree(parser:SBOMParser, policy_file: str=None) -> SbomNode:
                 for key, value in package.items()
                 if not key.startswith('_') # Exclude internal attributes
             ]
-            root_children.append(ComplexNode(pkg_type, pkg_policy, package_fields))
+            root_children.append(ComplexNode(pkg_type, package_fields,pkg_policy))
 
     # Create internal node for each file
     files=parser.get_files()
@@ -50,7 +50,7 @@ def build_sbom_tree(parser:SBOMParser, policy_file: str=None) -> SbomNode:
                 for key, value in file.items()
                 if not key.startswith('_') # Exclude internal attributes
             ]
-            root_children.append(ComplexNode(file_type, file_policy, file_fields))
+            root_children.append(ComplexNode(file_type, file_fields,file_policy))
     
     # Create internal node for each license        
     licenses=parser.get_licenses()
@@ -64,7 +64,7 @@ def build_sbom_tree(parser:SBOMParser, policy_file: str=None) -> SbomNode:
                 for key, value in license.items()
                 if not key.startswith('_') # Exclude internal attributes
             ]
-            root_children.append(ComplexNode(lic_type, lic_policy, license_fields))
+            root_children.append(ComplexNode(lic_type, license_fields,lic_policy))
 
     # Create internal node for each vulnerability
     vulnerabilities=parser.get_vulnerabilities()
@@ -78,7 +78,7 @@ def build_sbom_tree(parser:SBOMParser, policy_file: str=None) -> SbomNode:
                 for key, value in vulnerability.items()
                 if not key.startswith('_') # Exclude internal attributes
             ]
-            root_children.append(ComplexNode(vuln_type, vuln_policy, vulnerability_fields))
+            root_children.append(ComplexNode(vuln_type, vulnerability_fields,vuln_policy))
 
     # Create internal node for each relationship
     relationships=parser.get_relationships()
@@ -92,7 +92,7 @@ def build_sbom_tree(parser:SBOMParser, policy_file: str=None) -> SbomNode:
                 for key, value in relationship.items()
                 if not key.startswith('_') # Exclude internal attributes
             ]
-            root_children.append(ComplexNode(rel_type, rel_policy, relationship_fields))
+            root_children.append(ComplexNode(rel_type, relationship_fields,rel_policy))
 
     # Create internal node for each service
     services=parser.get_services()
@@ -107,7 +107,7 @@ def build_sbom_tree(parser:SBOMParser, policy_file: str=None) -> SbomNode:
                 if not key.startswith('_') # Exclude internal attributes
             
             ]
-            root_children.append(ComplexNode(svc_type, svc_policy, service_fields))
+            root_children.append(ComplexNode(svc_type, service_fields,svc_policy))
 
     # get all access trees from policy file
     sbom_policy=policy.get_all_access_policies()

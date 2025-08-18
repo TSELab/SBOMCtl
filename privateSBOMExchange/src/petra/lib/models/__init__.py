@@ -52,7 +52,7 @@ class FieldNode(Node):
         The policy associated with this field, might be set by EncryptVisitor based on the policy
 
     """
-    def __init__(self, field:str, value:str, policy:dict[str, Any] None=None):
+    def __init__(self, field:str, value:str, policy:dict[str, Any]| None=None):
         """Initialize a FieldNode.
 
         Parameters
@@ -187,11 +187,8 @@ class FieldNode(Node):
         n.hash = bytes.fromhex(node_dict['hash'])
         n.plaintext_commit = Commitment.from_hex(node_dict['plaintext_commit'])
         n.encrypted_data = node_dict['encrypted_data']
-        n.decrypted_data = (
-            bytes.fromhex(node_dict['decrypted_data'])
-            if node_dict.get('decrypted_data') is not None
-            else None
-        )        
+        if (n.decrypted_data):
+            n.decrypted_data = bytes.fromhex(node_dict.get('decrypted_data')) 
         n.policy = node_dict.get('policy')
         return n
 
@@ -346,11 +343,8 @@ class ComplexNode(Node):
         
         n = ComplexNode(node_dict['type'], children)
         n.encrypted_data = node_dict['encrypted_data']
-        n.decrypted_data = (
-            bytes.fromhex(node_dict['decrypted_data'])
-            if node_dict.get('decrypted_data') is not None
-            else None
-        )        
+        if (n.decrypted_data):
+            n.decrypted_data = bytes.fromhex(node_dict.get('decrypted_data'))      
         n.policy = node_dict.get('policy')
         n.hash = bytes.fromhex(node_dict['hash'])
 
