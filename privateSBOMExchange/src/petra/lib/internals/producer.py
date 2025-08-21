@@ -21,7 +21,7 @@ class Producer:
         self.decrypted_sbom_tree = None
         self.signing_cert = None
 
-    def redact_sbom(self):
+    def request_redaction(self):
         # call generator to redact the SBOM
         generator = Generator(self.sw_artifact, self.policy)
         self.plaintext_sbom_tree, self.redacted_sbom_tree, signing_cert = generator.redact_sbom()
