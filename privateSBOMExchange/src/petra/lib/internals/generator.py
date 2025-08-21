@@ -1,17 +1,11 @@
 import copy
 from lib4sbom.parser import SBOMParser
-import os
-import tempfile
-import json
-import argparse
 import requests
 
-from petra.lib.models.tree_ops import build_sbom_tree, verify_sameness
-from petra.lib.models import MerkleVisitor, EncryptVisitor, DecryptVisitor
+from petra.lib.models.tree_ops import build_sbom_tree
+from petra.lib.models import MerkleVisitor, EncryptVisitor
 from petra.lib.util.config import Config
-from petra.lib.models import SbomNode
-from cryptography.hazmat.primitives import serialization
-from petra.lib.models.tree_ops import serialize_tree
+from petra.lib.internals.common.common import sign_sbom_tree
 
 kms_conf = Config("./config/kms_and_attribute-namespace.conf")
 
@@ -24,12 +18,12 @@ class Generator:
         self.signing_key = ""
         self.cert = ""  
     
-    def get_keys(self):
-        response = requests.post(f"{self.kms_url}/provision-key")
+    def get_generator_keys(self):
+        response = requests.post(f"{self.kms_url}/provision-generator-keys")
         if response.status_code != 200:
             raise Exception(f"Failed to provision key: {response.text}")
         cpabe_pk, signing_key, cert = response.json().get("cpabe_pk"), response.json().get("signing_key"), response.json().get("cert")
-        if not cpabe_pk or not signing_key or not cert:
+        if not all([cpabe_pk, signing_key, cert]):
             raise Exception("Failed to get signing key or certificate from KMS")
         self.cpabe_pk, self.signing_key, self.cert = cpabe_pk, signing_key, cert
 
@@ -44,7 +38,7 @@ class Generator:
         plaintext_sbom_tree = copy.deepcopy(sbom_tree)
 
         # request keys(cpabe_pk, (counter)signing key pair and cert) from KMS
-        self.get_keys()
+        self.get_generator_keys()
 
         # encrypt node data
         encrypt_visitor = EncryptVisitor(self.cpabe_pk)
@@ -55,13 +49,6 @@ class Generator:
         merkle_root_hash_original = sbom_tree.accept(merkle_visitor)
 
         # sign the tree
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pem") as f:
-            f.write(self.signing_key.encode("utf-8"))
-            priv_key_file = f.name
-        try:
-            sbom_tree.sign(priv_key_file)
-        finally:
-            # Delete the key after signing
-            os.remove(priv_key_file)
+        sbom_tree = sign_sbom_tree(self.signing_key, sbom_tree)
 
         return plaintext_sbom_tree, sbom_tree, self.cert

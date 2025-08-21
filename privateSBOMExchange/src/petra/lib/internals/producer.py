@@ -1,12 +1,10 @@
 import copy
 import requests
-import os
 from petra.lib.models import DecryptVisitor
 from petra.lib.util.config import Config
 from petra.lib.internals.generator import Generator
 from cryptography import x509
-import tempfile
-from cryptography.hazmat.primitives import serialization
+from petra.lib.internals.common.common import sign_sbom_tree, verify_sbom_tree_signature
 
 kms_conf = Config("./config/kms_and_attribute-namespace.conf")
 
@@ -17,60 +15,48 @@ class Producer:
         self.policy = policy
         self.plaintext_sbom_tree = None
         self.redacted_sbom_tree = None
-        self.cpabe_sk = ""
+        self.signed_redacted_sbom_tree = None
         self.decrypted_sbom_tree = None
-        self.signing_cert = None
+        self.cpabe_sk = ""
+        self.generator_cert = ""
+        self.signing_cert = ""
 
     def request_redaction(self):
         # call generator to redact the SBOM
         generator = Generator(self.sw_artifact, self.policy)
         self.plaintext_sbom_tree, self.redacted_sbom_tree, signing_cert = generator.redact_sbom()
-        self.signing_cert = x509.load_pem_x509_certificate(signing_cert.encode())
+        self.generator_cert = x509.load_pem_x509_certificate(signing_cert.encode())
 
-        # return the outcome of the redaction verification
-        return self.verify_redaction()
-    
-    def decrypt_key_enroll(self):
-        response = requests.post(f"{self.kms_url}/enroll")
-        if response.status_code != 200:
-            raise Exception(f"Failed to get secret key: {response.text}")
-        self.cpabe_sk = response.json().get("secret_key")
+        # get producer keys(cpabe_sk, counter signing_key, cert)
+        self.get_producer_keys()
+
+        # verify generator signature on redacted SBOM
+        self.decrypt_sbom()
+        if not verify_sbom_tree_signature(self.generator_cert, self.decrypted_sbom_tree):
+            raise Exception("Generator Signature verification failed")
+
+        # countersign the redacted SBOM
+        self.signed_redacted_sbom_tree = sign_sbom_tree(self.signing_key, self.redacted_sbom_tree)
+
+    def get_producer_keys(self):
+        resp = requests.post(f"{self.kms_url}/provision-producer-keys")
+        if resp.status_code != 200:
+            raise Exception(f"Failed to provision key: {resp.text}")
+        cpabe_sk, signing_key, cert = resp.json().get("cpabe_sk"), resp.json().get("signing_key"), resp.json().get("cert")
+        if not all([cpabe_sk, signing_key, cert]):
+            raise Exception("Failed to get cpabe_sk, signing key or certificate from KMS")
+        self.cpabe_sk, self.signing_key, self.signing_cert = cpabe_sk, signing_key, cert
 
     def decrypt_sbom(self):
         decrypt_visitor = DecryptVisitor(self.cpabe_sk)
         self.decrypted_sbom_tree = copy.deepcopy(self.redacted_sbom_tree)
         self.decrypted_sbom_tree.accept(decrypt_visitor)
-    
-    def verify_signature(self):
-        """Verifies the signature of the redacted SBOM tree."""
-        if not self.signing_cert or not self.decrypted_sbom_tree:
-            raise Exception("Signing cert or decrypted tree not available for signature verification")
 
-        # write the public key to a temporary file
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pem") as f:
-            f.write(
-                self.signing_cert.public_key().public_bytes(
-                    serialization.Encoding.PEM,
-                    serialization.PublicFormat.SubjectPublicKeyInfo
-                )
-            )
-            pub_key_file = f.name
-        try:
-            ok = self.decrypted_sbom_tree.verify_signature(pub_key_file)
-        finally:
-            os.remove(pub_key_file)
-        return ok
-
-    def verify_redaction(self):
-        self.decrypt_key_enroll()
-        self.decrypt_sbom()
-        return self.verify_signature()
-    
-    def get_redacted_sbom_tree(self):
+    def to_distributor(self):
         """Returns the decrypted SBOM tree."""
-        # this should be provided by the distributor, for now, we get it here
-        if not self.redacted_sbom_tree:
-            raise Exception("Redacted SBOM tree is not available")
-        return self.redacted_sbom_tree
+        # producer should send this to the distributor, for now, distributor gets it from here
+        if not self.signed_redacted_sbom_tree or not self.signing_cert:
+            raise Exception("Signed redacted SBOM tree or producer cert is not available")
+        return self.signed_redacted_sbom_tree, self.signing_cert
 
         

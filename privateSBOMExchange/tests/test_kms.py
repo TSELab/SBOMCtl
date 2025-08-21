@@ -11,6 +11,7 @@ from petra.lib.models import SbomNode
 from petra.lib.models.tree_ops import serialize_tree
 from petra.lib.internals.producer import Producer
 from petra.lib.internals.consumer import Consumer
+from petra.lib.internals.distributor import Distributor
 
 
 # read in the IP policy config
@@ -20,20 +21,19 @@ conf = Config("./config/ip-policy.conf")
 sbom_file = conf.get_sbom_files()[0]
 policy_file = conf.get_cpabe_policy('ip-policy')
 
-# instantiate the producer and redact the SBOM
+# Producer requests sbom redaction
 producer = Producer(sbom_file, policy_file)
-ok = producer.redact_sbom()
-print(f"SBOM redaction completed successfully? {str(ok)}")
+producer.request_redaction()
 
-# verify the redacted SBOM
-redacted_sbom_tree = producer.get_redacted_sbom_tree()
+# Distributor verifies producer's signature on redacted SBOM
+redacted_sbom, producer_cert = producer.to_distributor()
+distributor = Distributor(redacted_sbom, producer_cert)
 
-
-# instantiate the consumer and decrypt the redacted SBOM
-consumer = Consumer(sbom_file, redacted_sbom_tree)
+# Consumer decrypts the redacted SBOM
+consumer = Consumer(sbom_file, redacted_sbom)
 consumer.decrypt_sbom()
 print("decrypted tree signature verification passed")
 
-# verify the sameness of the redacted and decrypted SBOM trees
-passed = verify_sameness(redacted_sbom_tree, consumer.decrypted_sbom_tree)
-print(f"full tree sameness verification passed? {str(ok)}")
+# Consumer verifies the sameness of the redacted and decrypted SBOM trees
+passed = verify_sameness(redacted_sbom, consumer.decrypted_sbom_tree)
+print(f"full tree sameness verification passed? {str(passed)}")
