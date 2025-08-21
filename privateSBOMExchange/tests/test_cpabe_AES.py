@@ -2,11 +2,12 @@ import copy
 from lib4sbom.parser import SBOMParser
 import json
 import argparse
-import requests
 
 from petra.lib.models.tree_ops import build_sbom_tree, verify_sameness
 from petra.lib.models import MerkleVisitor, EncryptVisitor, DecryptVisitor
 from petra.lib.util.config import Config
+
+import cpabe
 
 argparser = argparse.ArgumentParser()
 # TODO: add args for the config
@@ -22,14 +23,8 @@ conf = Config("./config/ip-policy.conf")
 
 sbom_file = conf.get_sbom_files()[0]
 
-kms_conf = Config("./config/kms.conf")
-kms_service_url = kms_conf.get_kms_service_url()
-
-response = requests.get(f"{kms_service_url}/public-key")
-if response.status_code != 200:
-    print("Failed to get public key")
-    exit(1)
-pk = response.json()
+pk, mk = cpabe.cpabe_setup()
+sk = cpabe.cpabe_keygen(pk, mk, conf.get_cpabe_group('ip-group'))
 
 # Parse SPDX data into a Document object
 SBOM_parser = SBOMParser()   
@@ -60,11 +55,6 @@ print("signing the tree")
 sbom_tree.sign(conf.get_tree_signing_key())
 
 # decrypt node data
-response = requests.post(f"{kms_service_url}/onboard")
-if response.status_code != 200:
-    raise Exception(f"Failed to get secret key: {response.text}")
-sk = response.json().get("secret_key")
-
 decrypt_visitor = DecryptVisitor(sk)
 decrypted_tree = copy.deepcopy(sbom_tree)
 decrypted_tree.accept(decrypt_visitor)
