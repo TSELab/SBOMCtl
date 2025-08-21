@@ -17,7 +17,8 @@ import cpabe
 
 class KeyManagementService:
     """Key Management Service that provisions the cpabe keys and manages signing keys."""
-    def __init__(self, key_lifetime_hours=24*356):
+    def __init__(self, kms_conf, key_lifetime_hours=24*356):
+        self.kms_conf = kms_conf
         self.KEY_LIFETIME_HOURS = key_lifetime_hours
         self.current_expiry_time = int(time.time()) + self.KEY_LIFETIME_HOURS * 3600
         # Generate CP-ABE root keys
@@ -36,8 +37,7 @@ class KeyManagementService:
 
     def get_user_attributes(self, email: str, name: str) -> list[str]:
         domain = email.split("@")[-1]
-        namespace_conf = Config("./config/attribute-namespace.conf")
-        attributes = namespace_conf.get_attributes_for_namespace(domain)
+        attributes = self.kms_conf.get_attributes_for_namespace(domain)
 
         if not attributes:
             return None
@@ -96,7 +96,9 @@ class KeyManagementService:
         return cert.public_bytes(serialization.Encoding.PEM).decode()
 
 app = Flask(__name__)
-kms = KeyManagementService()
+kms_conf = Config("./config/kms_and_attribute-namespace.conf")
+kms_service_url = kms_conf.get_kms_service_url()
+kms = KeyManagementService(kms_conf)
 
 @app.route("/enroll", methods=["POST"])
 def enroll():
@@ -132,9 +134,6 @@ def provision_key():
         "signing_key": priv_key_pem, 
         "cert": cert
     }), 200
-
-kms_conf = Config("./config/kms.conf")
-kms_service_url = kms_conf.get_kms_service_url()
 
 if __name__ == "__main__":
     parsed_url = urlparse(kms_service_url)

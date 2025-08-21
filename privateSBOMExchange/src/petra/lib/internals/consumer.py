@@ -3,7 +3,7 @@ import requests
 from petra.lib.models import DecryptVisitor
 from petra.lib.util.config import Config
 
-kms_conf = Config("./config/kms.conf")
+kms_conf = Config("./config/kms_and_attribute-namespace.conf")
 
 class Consumer:
     def __init__(self, sw_artficat, redacted_sbom_tree):

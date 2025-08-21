@@ -8,7 +8,7 @@ from cryptography import x509
 import tempfile
 from cryptography.hazmat.primitives import serialization
 
-kms_conf = Config("./config/kms.conf")
+kms_conf = Config("./config/kms_and_attribute-namespace.conf")
 
 class Producer:
     def __init__(self, artifact, policy):

@@ -13,7 +13,7 @@ from petra.lib.models import SbomNode
 from cryptography.hazmat.primitives import serialization
 from petra.lib.models.tree_ops import serialize_tree
 
-kms_conf = Config("./config/kms.conf")
+kms_conf = Config("./config/kms_and_attribute-namespace.conf")
 
 class Generator:
     def __init__(self, sw_artifact, policy):
@@ -63,5 +63,5 @@ class Generator:
         finally:
             # Delete the key after signing
             os.remove(priv_key_file)
-            
+
         return plaintext_sbom_tree, sbom_tree, self.cert
