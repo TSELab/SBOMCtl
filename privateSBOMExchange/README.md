@@ -115,6 +115,14 @@ We also provide the following example configurations:
 * `config/tiny.conf`: a config for testing Petra with a small SBOM and simple redaction policy
 * `config/ip-policy.conf`: a config for testing Petra with a sample IP protection policy
 * `config/weaknesses.conf`: a config for testing Petra with a sample vulnerability info protection policy
+* `kms_and_attribute-namespace.conf`: a config for kms url and attribute namespace mapping with sample domain mappings
+
+### Start the KMS service
+The KMS service handles the key management
+
+```
+python src/petra/lib/internals/kms.py
+```
 
 ### Tests
 
