@@ -7,10 +7,11 @@ class PetraPolicy:
         Petra SBOM trees.
     """
     
-    def __init__(self, policy_file: str):
+    def __init__(self, policy_file: str,time_tree_clause:str):
         """Load policies from the given toml file into a dictionary, supporting general and specific cases."""
         self.__policy = {}
         self.__all_policies={}
+        self.time_tree_clause:str = time_tree_clause
         with open(policy_file, "rb") as f:
             self.__policy = tomli.load(f)
         
@@ -28,10 +29,10 @@ class PetraPolicy:
             field_rule = field_rules.get(field_name)
         
             if field_rule != None:
-                node_policy = field_rule
+                node_policy = f"({field_rule}) and {self.time_tree_clause}"
                 if node_policy not in self.__all_policies:
                     self.__all_policies[node_policy]=generate_AES_key() 
-        
+                    print(f"\n\nPolicy:{ node_policy}")
         return node_policy
 
     def get_complex_node_policy(self, complex_node_type: str) -> (str, dict):
@@ -43,12 +44,12 @@ class PetraPolicy:
         if type_rules:
             # Check for * policy( all fields policy ) for the complex node        
             all_fields_rule = type_rules.get("*")
-
             if all_fields_rule:
-                node_policy = all_fields_rule
+                node_policy: str = f"({all_fields_rule}) and {self.time_tree_clause}"
                 if node_policy not in self.__all_policies:
                     self.__all_policies[node_policy]=generate_AES_key() 
-    
+                    print(f"\n\nPolicy:{ node_policy}")
+            
         return node_policy, type_rules
     
     def get_all_access_policies(self):
