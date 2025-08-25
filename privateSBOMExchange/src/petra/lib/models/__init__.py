@@ -663,9 +663,7 @@ class EncryptVisitor:
 
         # Encrypt AES keys
         for policy, key in node.policy.items():
-            # debug
-            print("encrypting key: %s" % node.policy[policy].hex())
-            print("key %s" % self.pk)
+
             node.encrypted_data[policy] = cpabe_encrypt(self.pk, policy, key)
             node.policy[policy]=NODE_REDACTED
 

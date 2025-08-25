@@ -1,3 +1,4 @@
+from ast import Dict
 import hashlib
 from lib4sbom.parser import SBOMParser
 
@@ -5,18 +6,15 @@ from petra.lib.models import NODE_PUBLIC, NODE_REDACTED, Node, SbomNode, FieldNo
 from petra.lib.models.policy import PetraPolicy
 from petra.lib.crypto import digest
 
-def build_sbom_tree(parser:SBOMParser, policy_file: str=None) -> SbomNode:
+def build_sbom_tree(parser:SBOMParser, time_tree_clause,policy_file: str=None) -> SbomNode:
     """Builds a SBOM tree from an SBOM.""" 
-    leaves = []
     root_children = []
-
-    policy = PetraPolicy(policy_file)
+    policy = PetraPolicy(policy_file,time_tree_clause)
 
     #create internal node for document information
     document_info=parser.get_document()
     doc_type = "Document"
     doc_policy, doc_rules = policy.get_complex_node_policy(doc_type)
-    
     doc_fields: List[FieldNode] = [
     FieldNode(key,value,policy.get_field_node_rule(key, doc_policy,doc_rules))
     for key, value in document_info.items()
