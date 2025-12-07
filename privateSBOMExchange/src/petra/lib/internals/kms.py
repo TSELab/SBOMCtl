@@ -28,13 +28,13 @@ class KeyManagementService:
         self.pk, self.mk = cpabe.cpabe_setup()
         
     def ensure_epoch_from_token(self, id_token: str):
-        """Set the epoch anchor from the token's 'iat' once"""
+        """Set the epoch anchor from the token's issuedAt  once"""
         if self.epoch_anchor_ts is not None:
             return
         claims = jwt.decode(id_token, options={"verify_signature": False})
-        iat_ts = int(claims.get("iat", int(time.time())))
+        issued_at_ts = int(claims.get("iat", int(time.time())))
         # floor to the period boundary
-        self.epoch_anchor_ts = (iat_ts // self.epoch_period_sec) * self.epoch_period_sec
+        self.epoch_anchor_ts = (issued_at_ts // self.epoch_period_sec) * self.epoch_period_sec
         
     def epoch_info(self) -> dict:
         """
@@ -173,7 +173,7 @@ def provision_generator_keys():
 @app.route("/provision-producer-keys", methods=["POST"])
 def provision_producer_keys():
     id_token, identity, name = kms.authenticate_user(ambient=True)
-    kms.ensure_epoch_from_token(id_token) # extract iat from the OIDC token to use as the start time of epoch 0
+    kms.ensure_epoch_from_token(id_token) # extract issuedAt (iat) from the OIDC token to use as the start time of epoch 0
     print(f"producer epoch info {kms.epoch_info()}")
     attributes = kms.get_user_attributes(identity, name)
     if not attributes:
