@@ -3,10 +3,10 @@ from lib4sbom.parser import SBOMParser
 import json
 import argparse
 
-from petra.lib.models.tree_ops import build_sbom_tree, verify_sameness
-from petra.lib.models import MerkleVisitor, EncryptVisitor, DecryptVisitor
-from petra.lib.models.parallel_encrypt import ParallelEncryptVisitor, ParallelDecryptVisitor
-from petra.lib.util.config import Config
+from petra.models.tree_ops import build_sbom_tree, verify_sameness
+from petra.models import MerkleVisitor, EncryptVisitor, DecryptVisitor
+from petra.models.parallel_encrypt import ParallelEncryptVisitor, ParallelDecryptVisitor
+from petra.util.config import Config
 
 import cpabe
 

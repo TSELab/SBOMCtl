@@ -6,7 +6,7 @@ import shutil
 from lib4sbom.parser import SBOMParser
 import configparser
 
-from petra.lib.models import *
+from petra.models import *
 import cpabe
 
 "This attempts to filter out SBOMs with erroneous formats."

@@ -2,7 +2,7 @@ from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
 import base64
 
-from petra.lib.crypto import generate_AES_key, encrypt_data_AES,decrypt_data_AES
+from petra.crypto import generate_AES_key, encrypt_data_AES,decrypt_data_AES
 
 # Example usage:
 if __name__ == "__main__":

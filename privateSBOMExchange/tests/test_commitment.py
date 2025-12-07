@@ -1,4 +1,4 @@
-from petra.lib.crypto import Commitment
+from petra.crypto import Commitment
 
 print("Creating commitment for byte string 0xdecafbad")
 

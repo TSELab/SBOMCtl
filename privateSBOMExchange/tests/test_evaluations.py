@@ -9,9 +9,9 @@ from lib4sbom.parser import SBOMParser
 import configparser
 from multiprocessing import Pool
 
-from petra.lib.models import *
-from petra.lib.models.parallel_encrypt import ParallelEncryptVisitor, ParallelDecryptVisitor
-from petra.lib.models.tree_ops import GetTargetNodes
+from petra.models import *
+from petra.models.parallel_encrypt import ParallelEncryptVisitor, ParallelDecryptVisitor
+from petra.models.tree_ops import GetTargetNodes
 import cpabe
 
 """This tests whether a target has is a member of a tree 

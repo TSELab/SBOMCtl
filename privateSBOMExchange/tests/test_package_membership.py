@@ -3,9 +3,9 @@
 import copy
 
 from lib4sbom.parser import SBOMParser
-from petra.lib.util.config import Config
-from petra.lib.models import MerkleVisitor, EncryptVisitor, DecryptVisitor
-from petra.lib.models.tree_ops import GetTargetNodes, get_membership_proof, verify_membership_proof,build_sbom_tree
+from petra.util.config import Config
+from petra.models import MerkleVisitor, EncryptVisitor, DecryptVisitor
+from petra.models.tree_ops import GetTargetNodes, get_membership_proof, verify_membership_proof,build_sbom_tree
 import cpabe
 
 def is_member(root_hash, target_hash, proof):
