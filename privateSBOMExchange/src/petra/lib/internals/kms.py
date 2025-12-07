@@ -20,7 +20,7 @@ class KeyManagementService:
     - Authenticates users via OIDC tokens (ambient/interactive).
     - Retrieves user attributes based on identity namespace.
     - Requests signing certificates from Fulcio. """
-    def __init__(self, kms_conf, key_lifetime_hours = 24*30):
+    def __init__(self, kms_conf, key_lifetime_hours=24*30):
         self.kms_conf = kms_conf
         self.KEY_LIFETIME_HOURS = key_lifetime_hours
         self.epoch_period_sec = key_lifetime_hours * 3600
@@ -31,7 +31,7 @@ class KeyManagementService:
         """Set the epoch anchor from the token's issuedAt  once"""
         if self.epoch_anchor_ts is not None:
             return
-        claims = jwt.decode(id_token, options = {"verify_signature": False})
+        claims = jwt.decode(id_token, options={"verify_signature": False})
         issued_at_ts = int(claims.get("iat", int(time.time())))
         # floor to the period boundary
         self.epoch_anchor_ts = (issued_at_ts // self.epoch_period_sec) * self.epoch_period_sec
@@ -97,11 +97,11 @@ class KeyManagementService:
         if ambient:
             url = "https://raw.githubusercontent.com/sigstore-conformance/extremely-dangerous-public-oidc-beacon/current-token/oidc-token.txt"
             token = requests.get(url).text.strip()
-            idinfo = jwt.decode(token, options = {"verify_signature": False})
+            idinfo = jwt.decode(token, options={"verify_signature": False})
             identity, name = idinfo['job_workflow_ref'], idinfo['actor_id']
         else:
             token = authenticate_and_get_id_token()
-            idinfo = jwt.decode(token, options = {"verify_signature": False})
+            idinfo = jwt.decode(token, options={"verify_signature": False})
             identity, name = idinfo['email'], idinfo['name']
         return token, identity, name
 
@@ -109,7 +109,7 @@ class KeyManagementService:
         builder = (
             x509.CertificateSigningRequestBuilder()
             .subject_name(x509.Name([x509.NameAttribute(NameOID.EMAIL_ADDRESS, email)]))
-            .add_extension(x509.BasicConstraints(ca = False, path_length = None), critical = True)
+            .add_extension(x509.BasicConstraints(ca=False, path_length=None), critical=True)
         )
         csr = builder.sign(priv_key, hashes.SHA256())
         url = "https://fulcio.sigstage.dev/api/v2/signingCert"
@@ -150,7 +150,7 @@ kms = KeyManagementService(kms_conf)
 
 @app.route("/enroll", methods=["POST"])
 def enroll():
-    _, identity, name = kms.authenticate_user(ambient = True)
+    _, identity, name = kms.authenticate_user(ambient=True)
     attributes = kms.get_user_attributes(identity, name)
     if not attributes:
         return jsonify({"error": f"No attributes assigned to {identity}"}), 403
@@ -162,7 +162,7 @@ def enroll():
 
 @app.route("/provision-generator-keys", methods=["POST"])
 def provision_generator_keys():
-    id_token, identity, _ = kms.authenticate_user(ambient = True)
+    id_token, identity, _ = kms.authenticate_user(ambient=True)
     priv_key_pem, cert = generate_ephemeral_key_and_cert(kms, id_token, identity)
     return jsonify({
         "cpabe_pk": kms.pk,
@@ -172,7 +172,7 @@ def provision_generator_keys():
 
 @app.route("/provision-producer-keys", methods=["POST"])
 def provision_producer_keys():
-    id_token, identity, name = kms.authenticate_user(ambient = True)
+    id_token, identity, name = kms.authenticate_user(ambient=True)
     kms.ensure_epoch_from_token(id_token) # extract issuedAt (iat) from the OIDC token to use as the start time of epoch 0
     print(f"producer epoch info {kms.epoch_info()}")
     attributes = kms.get_user_attributes(identity, name)
@@ -192,4 +192,4 @@ if __name__ == "__main__":
     parsed_url = urlparse(kms_service_url)
     host = parsed_url.hostname
     port = parsed_url.port
-    app.run(debug = True, host = host, port = port)
+    app.run(debug=True, host=host, port=port)
