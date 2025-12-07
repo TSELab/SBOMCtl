@@ -10,7 +10,7 @@ class PetraPolicy:
     def __init__(self, policy_file: str,time_tree_clause:str):
         """Load policies from the given toml file into a dictionary, supporting general and specific cases."""
         self.__policy = {}
-        self.__all_policies={}
+        self.__all_policies = {}
         self.time_tree_clause:str = time_tree_clause
         with open(policy_file, "rb") as f:
             self.__policy = tomli.load(f)
@@ -31,7 +31,7 @@ class PetraPolicy:
             if field_rule != None:
                 node_policy = f"({field_rule}) and {self.time_tree_clause}"
                 if node_policy not in self.__all_policies:
-                    self.__all_policies[node_policy]=generate_AES_key() 
+                    self.__all_policies[node_policy] = generate_AES_key() 
                     print(f"\n\nPolicy:{ node_policy}")
         return node_policy
 
@@ -47,7 +47,7 @@ class PetraPolicy:
             if all_fields_rule:
                 node_policy: str = f"({all_fields_rule}) and {self.time_tree_clause}"
                 if node_policy not in self.__all_policies:
-                    self.__all_policies[node_policy]=generate_AES_key() 
+                    self.__all_policies[node_policy] = generate_AES_key() 
                     print(f"\n\nPolicy:{ node_policy}")
             
         return node_policy, type_rules
