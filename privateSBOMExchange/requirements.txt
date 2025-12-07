@@ -70,3 +70,4 @@ virtualenv==20.26.6
 Werkzeug==3.0.4
 xmltodict==0.13.0
 PyJWT[crypto]>=2.9.0,<3.0.0
+tqdm

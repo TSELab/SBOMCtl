@@ -2,8 +2,8 @@ from lib4sbom.parser import SBOMParser
 import json
 
 from petra.lib.util.config import Config
-from petra.lib.models import build_sbom_tree, MerkleVisitor, SbomNode, PrintVisitor
-from petra.lib.models.tree_ops import serialize_tree
+from petra.lib.models import  MerkleVisitor, SbomNode, PrintVisitor
+from petra.lib.models.tree_ops import serialize_tree, build_sbom_tree
 
 conf = Config("config/bom-only.conf")
 bom_file = conf.get_sbom_files()[0]

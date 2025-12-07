@@ -12,13 +12,16 @@ This directory contains the two modules needed to run the Petra system (currentl
 
 The following files are currently in here
 ├── bootstrap.sh
+├── src
 ├── docs
+├── config
+├── policies
+├── tests
 ├── Makefile
 ├── pyproject.toml
 ├── requirements.txt
-├── src
 
-Of which, `docs` contains documentation, and Makefile, pyproject.toml and
+Of which, `docs` contains documentation, config contains configuration files, policies contains example policies and Makefile, pyproject.toml and
 requirements.txt, bootstrap.sh support setting up the project.
 
 ## Setup
@@ -47,7 +50,7 @@ Before you run any other code, make sure that these bindings are built by issuin
 
 ```
 sudo apt install rustc cargo
-cd cpabe
+cd src/cpabe
 
 maturin develop
 ```

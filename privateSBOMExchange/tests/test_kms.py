@@ -2,7 +2,6 @@ import copy
 from lib4sbom.parser import SBOMParser
 import json
 import argparse
-import requests
 
 from petra.lib.models.tree_ops import build_sbom_tree, verify_sameness
 from petra.lib.models import MerkleVisitor, EncryptVisitor, DecryptVisitor

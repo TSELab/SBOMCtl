@@ -2,6 +2,7 @@ import configparser
 from lib4sbom.parser import SBOMParser
 
 from petra.lib.models import *
+from petra.lib.models.tree_ops import build_sbom_tree
 from petra.lib.util.config import Config
 
 """This tests inserting a sbom as tree ,assuming Non of the dependencies has its own sbom 
