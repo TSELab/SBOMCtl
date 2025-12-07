@@ -44,7 +44,7 @@ class Producer:
             raise Exception(f"Failed to provision key: {resp.text}")
         cpabe_sk, signing_key, cert,epoch_info= resp.json().get("cpabe_sk"), resp.json().get("signing_key"), resp.json().get("cert"),resp.json().get("epoch_info")
         if not all([cpabe_sk, signing_key, cert,epoch_info]):
-            raise Exception("Failed to get cpabe_sk, signing key, certificate or epoch infor from KMS")
+            raise Exception("Failed to get cpabe_sk, signing key, certificate or epoch info from KMS")
         self.cpabe_sk, self.signing_key, self.signing_cert,self.epoch_info = cpabe_sk, signing_key, cert,epoch_info
 
     def decrypt_sbom(self):
