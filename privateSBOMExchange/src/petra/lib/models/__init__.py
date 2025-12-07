@@ -10,12 +10,12 @@ from petra.lib.crypto import decrypt_data_AES, encrypt_data_AES
 from petra.lib.crypto import ecdsa_sign, ecdsa_sig_verify
 
 # node markers
-NODE_REDACTED="encrypted"
-NODE_PUBLIC="public"
+NODE_REDACTED = "encrypted"
+NODE_PUBLIC = "public"
 
-NODE_FIELD="F"
-NODE_COMPLEX="C"
-NODE_SBOM="S"
+NODE_FIELD = "F"
+NODE_COMPLEX = "C"
+NODE_SBOM = "S"
 
 class Node:
     """Base class for a node in the SBOM tree."""
@@ -104,8 +104,8 @@ class FieldNode(Node):
             data_to_encrypt += self.serialize_field_data() # this needs to match the commitment
 
             #print(f"policy found for FieldNode {self.field_name}, {self.policy}.")
-            self.field_name=NODE_REDACTED
-            self.field_value=NODE_REDACTED
+            self.field_name = NODE_REDACTED
+            self.field_value = NODE_REDACTED
 
         return data_to_encrypt
 
@@ -207,11 +207,11 @@ class ComplexNode(Node):
         children : List[FieldNode]
             A list of FieldNode instances representing the fields of the package.
         """
-        self.complex_type:str=complex_type
-        self.encrypted_data=NODE_PUBLIC
-        self.decrypted_data:bytes=None
+        self.complex_type:str = complex_type
+        self.encrypted_data = NODE_PUBLIC
+        self.decrypted_data:bytes = None
         self.children = children
-        self.policy:str=policy
+        self.policy:str = policy
         self.hash:bytes = None
         # sameness properties:
         # the commitment allows consumers to verify the
@@ -364,7 +364,7 @@ class SbomNode(Node):
     purl : str
         package url 
     """
-    def __init__(self, purl:str, children:List[Node], redaction_policy: dict[str, Any] | None = None):
+    def __init__(self, purl:str, children:List[Node], redaction_policy: dict[str, Any] | None=None):
         """Initialize an SbomNode.
 
         Parameters
@@ -376,12 +376,12 @@ class SbomNode(Node):
         """
         self.purl:str=purl
         self.children = children
-        self.signature=None
+        self.signature = None
         self.hash:bytes = None
         self.policy: dict[str, Any] = redaction_policy or {}
-        self.decrypted_policy={}
-        self.encrypted_data={}
-        self.redacted_keys=b""
+        self.decrypted_policy = {}
+        self.encrypted_data = {}
+        self.redacted_keys = b""
         # sameness properties
         # the plaintext_hash is needed to verify the structural congruence
         # aspect of sameness, i.e., the original SBOM structure is preserved
@@ -547,7 +547,7 @@ class MerkleVisitor:
         """
         children_hashes = b''.join(child.accept(self) for child in node.children)
         
-        node.hash=digest(node.serialize_for_hashing(node.plaintext_commit.value, node.plaintext_hash, children_hashes))
+        node.hash = digest(node.serialize_for_hashing(node.plaintext_commit.value, node.plaintext_hash, children_hashes))
         return node.hash
     
     def visit_sbom_node(self, node:SbomNode):
@@ -572,7 +572,7 @@ class MerkleVisitor:
         for policy, key in node.encrypted_data.items():
             node.redacted_keys += key.encode("utf-8")
         data_to_hash = node.redacted_keys + node.purl.encode("utf-8") + node.plaintext_hash + children_hashes
-        node.hash=digest(data_to_hash)
+        node.hash = digest(data_to_hash)
         return node.hash
 
 class PrintVisitor:
@@ -631,8 +631,8 @@ class EncryptVisitor:
             #print(f"policy found for FieldNode {node.field_name}, {node.policy}.")
             
             node.encrypted_data = encrypt_data_AES(data_to_encrypt,self.__aes_key_dict[node.policy])
-            node.field_name=NODE_REDACTED
-            node.field_value=NODE_REDACTED
+            node.field_name = NODE_REDACTED
+            node.field_value = NODE_REDACTED
 
     def visit_complex_node(self, node:ComplexNode):
         """Encrypt the data for a ComplexNode and assign policies to its children."""
@@ -643,7 +643,7 @@ class EncryptVisitor:
             #print(f"policy found for ComplexNode {node.complex_type} , {node.policy}")
             
             node.encrypted_data = encrypt_data_AES(data_to_encrypt,self.__aes_key_dict[node.policy])
-            node.complex_type=NODE_REDACTED
+            node.complex_type = NODE_REDACTED
 
         for child in node.children:
             child.accept(self)  # Visit each child
@@ -651,7 +651,7 @@ class EncryptVisitor:
     def visit_sbom_node(self, node: SbomNode):
         """Visit an SbomNode and accept its children without encrypting."""
         
-        self.__aes_key_dict=node.policy
+        self.__aes_key_dict = node.policy
 
         # debug
         #print(self.__aes_key_dict)
@@ -663,9 +663,7 @@ class EncryptVisitor:
 
         # Encrypt AES keys
         for policy, key in node.policy.items():
-            # debug
-            print("encrypting key: %s" % node.policy[policy].hex())
-            print("key %s" % self.pk)
+
             node.encrypted_data[policy] = cpabe_encrypt(self.pk, policy, key)
             node.policy[policy]=NODE_REDACTED
 
@@ -675,7 +673,7 @@ class DecryptVisitor:
     def __init__(self, secret_key):
         # TODO: Get user's secret key from database
         self.secret_key = secret_key
-        self.__decrypted_aes_keys={}
+        self.__decrypted_aes_keys = {}
 
     def visit_field_node(self, node: FieldNode):
         """Visit a FieldNode and decrypt its encrypted data using the secret key
@@ -720,12 +718,12 @@ class DecryptVisitor:
                     #print("decrypted key: %s" % node.decrypted_policy[policy].hex())
                 except Exception as e:
                     print(f"Decryption failed with error: {e}")
-                    node.decrypted_policy[policy]=""
+                    node.decrypted_policy[policy] = ""
         else:
             pass
 
         # Visit and decrypt all child nodes.  
-        self.__decrypted_aes_keys=node.decrypted_policy
+        self.__decrypted_aes_keys = node.decrypted_policy
 
         for child in node.children:
             child.accept(self)
@@ -733,86 +731,3 @@ class DecryptVisitor:
         del self.secret_key
         del self.__decrypted_aes_keys
 
-'''
-#represent SBOM in file as Merkle tree
-def SBOM_as_tree(flatten_SBOM_data,sbom_file_encoding):
-    tree = SparseMerkleTree(store=TreeMemoryStore())
-    tree_name = ""
-    
-    # Add each SBOM field to the tree
-    for field_name, value in flatten_SBOM_data.items():
-        if field_name == "name":
-            tree_name = value
-        # Prepare the SBOM field for insertion
-        sbom_field = {field_name: value}
-        for item, item_value in sbom_field.items():
-            # Convert boolean values to strings
-            if isinstance(item_value, bool):
-                item_value = str(item_value)
-            try:
-                # Update the tree and assert conditions
-                root_after_update = tree.update(item.encode(sbom_file_encoding), item_value.encode(sbom_file_encoding))
-                assert len(root_after_update) == 32, "Root after update must be 32 bytes."
-                assert root_after_update != PLACEHOLDER, "Root cannot be a placeholder."
-                assert DEFAULTVALUE == tree.get(b""), "Tree must return default value for an empty key."
-            except Exception as e:
-                print(f"Error updating tree with {item}: {e}")
-    return tree, tree_name
-
-
-def prove(tree, SBOMFields):
-    """
-    Generate and verify proofs for specified fields in a Sparse Merkle Tree.
-
-    Parameters:
-        tree (SparseMerkleTree): The Sparse Merkle Tree instance from which to generate proofs.
-        SBOMFields (dict): A dictionary containing the SBOM fields and their corresponding values.
-
-    Raises:
-        AssertionError: If any proof fails the sanity check or verification.
-        KeyError: If a field in SBOMFields is not found in the tree.
-    """
-    for item, expected_value in SBOMFields.items():
-        try:
-            proof = tree.prove(item)
-            assert proof.sanity_check(), f"Sanity check failed for item: {item}"
-            assert verify_proof(proof, tree.root, item, expected_value), f"Verification failed for item: {item}"
-        except KeyError:
-            print(f"Field '{item}' not found in the tree.")
-        except Exception as e:
-            print(f"An error occurred while processing '{item}': {e}")
-
-
-def tree_from_nodes(nodes, values, root):
-    """
-    Create a SparseMerkleTree from given nodes, values, and root.
-
-    Parameters:
-        nodes (list): A list of nodes to be included in the tree.
-        values (list): A list of values corresponding to each node.
-        root (NodeType): The root node of the tree.
-
-    Returns:
-        SparseMerkleTree: An instance of SparseMerkleTree initialized with the provided nodes, values, and root.
-    """
-    # Create a new Sparse Merkle Tree instance
-    new_tree = SparseMerkleTree(store=TreeMemoryStore())
-    
-    # Initialize memory store with nodes and values
-    memorystore = TreeMemoryStore()
-    memorystore.nodes = nodes
-    memorystore.values = values
-
-    # Set the memory store and root for the new tree
-    new_tree.store = memorystore
-    new_tree.root = root
-    return new_tree
-
-
-#this function is just to try things, should be replaced by the real cpabe
-def cpabe(data):
-    if not isinstance(data, bytes):
-        return data.encode()
-    else:
-        return data
-'''

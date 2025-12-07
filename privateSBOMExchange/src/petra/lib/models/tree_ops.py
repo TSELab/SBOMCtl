@@ -1,3 +1,4 @@
+from ast import Dict
 import hashlib
 from lib4sbom.parser import SBOMParser
 
@@ -5,18 +6,15 @@ from petra.lib.models import NODE_PUBLIC, NODE_REDACTED, Node, SbomNode, FieldNo
 from petra.lib.models.policy import PetraPolicy
 from petra.lib.crypto import digest
 
-def build_sbom_tree(parser:SBOMParser, policy_file: str=None) -> SbomNode:
+def build_sbom_tree(parser:SBOMParser, time_tree_clause:str,policy_file: str=None) -> SbomNode:
     """Builds a SBOM tree from an SBOM.""" 
-    leaves = []
     root_children = []
-
-    policy = PetraPolicy(policy_file)
+    policy = PetraPolicy(policy_file,time_tree_clause)
 
     #create internal node for document information
     document_info=parser.get_document()
     doc_type = "Document"
     doc_policy, doc_rules = policy.get_complex_node_policy(doc_type)
-    
     doc_fields: List[FieldNode] = [
     FieldNode(key,value,policy.get_field_node_rule(key, doc_policy,doc_rules))
     for key, value in document_info.items()
@@ -25,7 +23,7 @@ def build_sbom_tree(parser:SBOMParser, policy_file: str=None) -> SbomNode:
     root_children.append(ComplexNode(doc_type, doc_fields,doc_policy))
     
     # Create internal node for each package
-    pkgs=parser.get_packages()
+    pkgs = parser.get_packages()
     if(pkgs):
         pkg_type = "Package"
         pkg_policy, pkg_rules = policy.get_complex_node_policy(pkg_type)
@@ -39,7 +37,7 @@ def build_sbom_tree(parser:SBOMParser, policy_file: str=None) -> SbomNode:
             root_children.append(ComplexNode(pkg_type, package_fields,pkg_policy))
 
     # Create internal node for each file
-    files=parser.get_files()
+    files = parser.get_files()
     if(files):
         file_type = "File"
         file_policy, file_rules = policy.get_complex_node_policy(file_type)
@@ -53,7 +51,7 @@ def build_sbom_tree(parser:SBOMParser, policy_file: str=None) -> SbomNode:
             root_children.append(ComplexNode(file_type, file_fields,file_policy))
     
     # Create internal node for each license        
-    licenses=parser.get_licenses()
+    licenses = parser.get_licenses()
     if (licenses):
         lic_type = "License"
         lic_policy, lic_rules = policy.get_complex_node_policy(lic_type)
@@ -67,7 +65,7 @@ def build_sbom_tree(parser:SBOMParser, policy_file: str=None) -> SbomNode:
             root_children.append(ComplexNode(lic_type, license_fields,lic_policy))
 
     # Create internal node for each vulnerability
-    vulnerabilities=parser.get_vulnerabilities()
+    vulnerabilities = parser.get_vulnerabilities()
     if (vulnerabilities):
         vuln_type = "Vulnerability"
         vuln_policy, vuln_rules = policy.get_complex_node_policy(vuln_type)
@@ -81,7 +79,7 @@ def build_sbom_tree(parser:SBOMParser, policy_file: str=None) -> SbomNode:
             root_children.append(ComplexNode(vuln_type, vulnerability_fields,vuln_policy))
 
     # Create internal node for each relationship
-    relationships=parser.get_relationships()
+    relationships = parser.get_relationships()
     if (relationships):
         rel_type = "Relationship"
         rel_policy, rel_rules = policy.get_complex_node_policy(rel_type)
@@ -95,7 +93,7 @@ def build_sbom_tree(parser:SBOMParser, policy_file: str=None) -> SbomNode:
             root_children.append(ComplexNode(rel_type, relationship_fields,rel_policy))
 
     # Create internal node for each service
-    services=parser.get_services()
+    services = parser.get_services()
     if(services):
         svc_type = "Service"
         svc_policy, svc_rules = policy.get_complex_node_policy(svc_type)
@@ -110,9 +108,9 @@ def build_sbom_tree(parser:SBOMParser, policy_file: str=None) -> SbomNode:
             root_children.append(ComplexNode(svc_type, service_fields,svc_policy))
 
     # get all access trees from policy file
-    sbom_policy=policy.get_all_access_policies()
+    sbom_policy = policy.get_all_access_policies()
     # TODO pass as purl in from somewhere else
-    pURL=parser.get_document()["name"] # TODO this should become a field node under the SBOM node
+    pURL = parser.get_document()["name"] # TODO this should become a field node under the SBOM node
     root = SbomNode(pURL, root_children,sbom_policy)
     #ToDo store sign (root) , hash (root), and the tree in the database
     return root
@@ -128,15 +126,15 @@ class GetTargetNodes:
 
     def __init__(self,field_to_search_for:bytes=None):
         self.hashes = []
-        self.field_content=field_to_search_for
-        self.item_hash:bytes=None
+        self.field_content = field_to_search_for
+        self.item_hash:bytes = None
     def visit_field_node(self, node:FieldNode):
         # Append the hash if it existsr
         try:
-            if node.decrypted_data !=None:
+            if node.decrypted_data != None:
                 if (node.decrypted_data).endswith(self.field_content):
                     #self.item_hash=node.hash
-                    self.item_hash=digest(node.serialize_for_hashing(node.serialize_field_data(), node.plaintext_commit.value))
+                    self.item_hash = digest(node.serialize_for_hashing(node.serialize_field_data(), node.plaintext_commit.value))
             node_hash = node.hash
             self.hashes.append(node_hash)
         except AttributeError:
@@ -187,9 +185,9 @@ def get_membership_proof(root, target_hash):
             prefix = node.redacted_keys+(node.purl).encode("utf-8") +node.plaintext_hash
         elif isinstance(node, ComplexNode):
             #prefix = (f"{node.encrypted_data}{node.policy}{node.complex_type}").encode("utf-8")+node.plaintext_commit.value+node.plaintext_hash
-            prefix=node.serialize_for_hashing(node.plaintext_commit.value,node.plaintext_hash,b"")
+            prefix = node.serialize_for_hashing(node.plaintext_commit.value,node.plaintext_hash,b"")
         else: #field node
-            prefix=node.serialize_for_hashing(node.serialize_field_data(), node.plaintext_commit.value)
+            prefix = node.serialize_for_hashing(node.serialize_field_data(), node.plaintext_commit.value)
 
         return prefix
     

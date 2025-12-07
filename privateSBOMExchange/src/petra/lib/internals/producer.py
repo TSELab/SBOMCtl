@@ -20,15 +20,15 @@ class Producer:
         self.cpabe_sk = ""
         self.generator_cert = ""
         self.signing_cert = ""
+        self.epoch_info = {}
 
     def request_redaction(self):
-        # call generator to redact the SBOM
-        generator = Generator(self.sw_artifact, self.policy)
-        self.plaintext_sbom_tree, self.redacted_sbom_tree, signing_cert = generator.redact_sbom()
-        self.generator_cert = x509.load_pem_x509_certificate(signing_cert.encode())
-
         # get producer keys(cpabe_sk, counter signing_key, cert)
         self.get_producer_keys()
+        # call generator to redact the SBOM, send the epoch info returned by the kms
+        generator = Generator(self.sw_artifact, self.policy,self.epoch_info)
+        self.plaintext_sbom_tree, self.redacted_sbom_tree, signing_cert = generator.redact_sbom()
+        self.generator_cert = x509.load_pem_x509_certificate(signing_cert.encode())
 
         # verify generator signature on redacted SBOM
         self.decrypt_sbom()
@@ -42,10 +42,10 @@ class Producer:
         resp = requests.post(f"{self.kms_url}/provision-producer-keys")
         if resp.status_code != 200:
             raise Exception(f"Failed to provision key: {resp.text}")
-        cpabe_sk, signing_key, cert = resp.json().get("cpabe_sk"), resp.json().get("signing_key"), resp.json().get("cert")
-        if not all([cpabe_sk, signing_key, cert]):
-            raise Exception("Failed to get cpabe_sk, signing key or certificate from KMS")
-        self.cpabe_sk, self.signing_key, self.signing_cert = cpabe_sk, signing_key, cert
+        cpabe_sk, signing_key, cert,epoch_info = resp.json().get("cpabe_sk"), resp.json().get("signing_key"), resp.json().get("cert"),resp.json().get("epoch_info")
+        if not all([cpabe_sk, signing_key, cert,epoch_info]):
+            raise Exception("Failed to get cpabe_sk, signing key, certificate or epoch info from KMS")
+        self.cpabe_sk, self.signing_key, self.signing_cert,self.epoch_info = cpabe_sk, signing_key, cert,epoch_info
 
     def decrypt_sbom(self):
         decrypt_visitor = DecryptVisitor(self.cpabe_sk)
