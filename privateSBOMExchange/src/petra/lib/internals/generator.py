@@ -30,7 +30,7 @@ class Generator:
         self.cpabe_pk, self.signing_key, self.cert = cpabe_pk, signing_key, cert
 
     def redact_sbom(self):
-        time_tree_clause: str =self.build_time_tree_clause()
+        time_tree_clause: str =self.make_time_access_tree()
         
         # build sbom tree
         SBOM_parser = SBOMParser()   
@@ -62,8 +62,8 @@ class Generator:
         period_sec = int(self.epoch_info ["epoch_period_hours"]) * 3600
         start = int(self.epoch_info["epoch_end_time_stamp"])
         return [f"\"epoch:{start + i * period_sec}\"" for i in range(count)]
-
-    def build_time_tree_clause(self) -> str:
+#make_time_access_tree
+    def make_time_access_tree(self) -> str:
         """_summary_
         construct time tree as string from list of epoch end timestamps 
         ABE-safe atoms for rabe-like parsers
