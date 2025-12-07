@@ -6,7 +6,7 @@ from petra.lib.models import NODE_PUBLIC, NODE_REDACTED, Node, SbomNode, FieldNo
 from petra.lib.models.policy import PetraPolicy
 from petra.lib.crypto import digest
 
-def build_sbom_tree(parser:SBOMParser, time_tree_clause,policy_file: str=None) -> SbomNode:
+def build_sbom_tree(parser:SBOMParser, time_tree_clause:str,policy_file: str=None) -> SbomNode:
     """Builds a SBOM tree from an SBOM.""" 
     root_children = []
     policy = PetraPolicy(policy_file,time_tree_clause)
