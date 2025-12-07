@@ -62,7 +62,7 @@ class Generator:
         period_sec = int(self.epoch_info ["epoch_period_hours"]) * 3600
         start = int(self.epoch_info["epoch_end_time_stamp"])
         return [f"\"epoch:{start + i * period_sec}\"" for i in range(count)]
-#make_time_access_tree
+
     def make_time_access_tree(self) -> str:
         """_summary_
         construct time tree as string from list of epoch end timestamps 
