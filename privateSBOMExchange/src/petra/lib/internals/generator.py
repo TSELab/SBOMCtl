@@ -35,7 +35,7 @@ class Generator:
         # build sbom tree
         SBOM_parser = SBOMParser()   
         SBOM_parser.parse_file(self.sw_artifact)
-        sbom=SBOM_parser.sbom
+        sbom = SBOM_parser.sbom
         sbom_tree = build_sbom_tree(sbom,time_tree_clause,self.policy)
         plaintext_sbom_tree = copy.deepcopy(sbom_tree)
 
@@ -55,7 +55,7 @@ class Generator:
 
         return plaintext_sbom_tree, sbom_tree, self.cert
     
-    def epoch_end_list_from_info(self,count: int = 12) -> List[str]:
+    def epoch_end_list_from_info(self,count: int=12) -> List[str]:
         """
         Return a list of epoch end timestamps starting from the current epoch
         """
