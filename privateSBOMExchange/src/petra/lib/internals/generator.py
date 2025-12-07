@@ -69,6 +69,7 @@ class Generator:
         ABE-safe atoms for rabe-like parsers
         Returns:
             str: time tree as string
+        none-tree is returned if there's no expiry list
         """
         epoch_end_list = self.epoch_end_list_from_info()
         return "(" + " or ".join(epoch_end_list) + ")" if epoch_end_list else "(epoch_end_none)"
