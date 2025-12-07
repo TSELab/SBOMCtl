@@ -20,10 +20,10 @@ class KeyManagementService:
     - Authenticates users via OIDC tokens (ambient/interactive).
     - Retrieves user attributes based on identity namespace.
     - Requests signing certificates from Fulcio. """
-    def __init__(self, kms_conf, key_lifetime_hours=24*30):
+    def __init__(self, kms_conf, key_lifetime_seconds=24*30*3600):
         self.kms_conf = kms_conf
-        self.KEY_LIFETIME_HOURS = key_lifetime_hours
-        self.epoch_period_sec = key_lifetime_hours * 3600
+        self.KEY_LIFETIME_SECONDS = key_lifetime_seconds
+        self.epoch_period_sec = key_lifetime_seconds 
         self.epoch_anchor_ts: int | None = None  
         self.pk, self.mk = cpabe.cpabe_setup()
         
@@ -51,8 +51,8 @@ class KeyManagementService:
                 beginning of the current epoch.
                 - "epoch_end_time_stamp": (int) UNIX timestamp (UTC) for the
                 end of the current epoch (exclusive upper bound).
-                - "epoch_period_hours": (int) the configured length of an epoch
-                in hours (from KEY_LIFETIME_HOURS).
+                - "epoch_period_seconds": (int) the configured length of an epoch
+                in hours (from KEY_LIFETIME_SECONDS).
                 - "anchor_time_stamp": (int) the fixed UNIX timestamp (UTC)
                 that marks the beginning of epoch 0.
 
@@ -74,7 +74,7 @@ class KeyManagementService:
             "epoch": int(epoch),
             "epoch_start_time_stamp": int(epoch_start_time_stamp),
             "epoch_end_time_stamp": int(epoch_end_time_stamp),
-            "epoch_period_hours": self.KEY_LIFETIME_HOURS,
+            "epoch_period_seconds": self.KEY_LIFETIME_SECONDS,
             "anchor_time_stamp": int(anchor),
         }
         
