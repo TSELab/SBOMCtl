@@ -60,8 +60,7 @@ class Generator:
         Return a list of epoch end timestamps starting from the current epoch
         """
         period_sec = int(self.epoch_info ["epoch_period_hours"]) * 3600
-        first_end = int(self.epoch_info["epoch_end_time_stamp"])
-        start = first_end 
+        start = int(self.epoch_info["epoch_end_time_stamp"])
         return [f"\"epoch:{start + i * period_sec}\"" for i in range(count)]
 
     def build_time_tree_clause(self) -> str:
