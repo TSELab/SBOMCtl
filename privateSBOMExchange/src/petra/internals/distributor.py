@@ -1,5 +1,5 @@
 from cryptography import x509
-from petra.lib.internals.common.common import verify_sbom_tree_signature
+from petra.internals.common.common import verify_sbom_tree_signature
 
 class Distributor:
     def __init__(self, redacted_sbom_tree, cert):

@@ -1,8 +1,8 @@
 import copy
 import time
 import requests
-from petra.lib.models import DecryptVisitor
-from petra.lib.util.config import Config
+from petra.models import DecryptVisitor
+from petra.util.config import Config
 
 kms_conf = Config("./config/kms_and_attribute-namespace.conf")
 

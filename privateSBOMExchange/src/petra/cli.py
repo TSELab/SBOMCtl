@@ -7,10 +7,10 @@ import click
 import requests
 from lib4sbom.parser import SBOMParser
 
-from petra.lib.models.tree_ops import build_sbom_tree, verify_sameness
-from petra.lib.models import MerkleVisitor, EncryptVisitor, DecryptVisitor,SbomNode
-from petra.lib.util.config import Config
-from petra.lib.models.tree_ops import serialize_tree, GetTargetNodes, get_membership_proof, verify_membership_proof
+from petra.models.tree_ops import build_sbom_tree, verify_sameness
+from petra.models import MerkleVisitor, EncryptVisitor, DecryptVisitor,SbomNode
+from petra.util.config import Config
+from petra.models.tree_ops import serialize_tree, GetTargetNodes, get_membership_proof, verify_membership_proof
 import cpabe
 
 

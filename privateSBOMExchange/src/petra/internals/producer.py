@@ -1,10 +1,10 @@
 import copy
 import requests
-from petra.lib.models import DecryptVisitor
-from petra.lib.util.config import Config
-from petra.lib.internals.generator import Generator
+from petra.models import DecryptVisitor
+from petra.util.config import Config
+from petra.internals.generator import Generator
 from cryptography import x509
-from petra.lib.internals.common.common import sign_sbom_tree, verify_sbom_tree_signature
+from petra.internals.common.common import sign_sbom_tree, verify_sbom_tree_signature
 
 kms_conf = Config("./config/kms_and_attribute-namespace.conf")
 
