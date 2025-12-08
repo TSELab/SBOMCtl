@@ -3,7 +3,7 @@ from cpabe import cpabe_encrypt, cpabe_decrypt, ac17_cpabe_encrypt, ac17_cpabe_d
 import configparser
 import os
 
-from petra.lib.models import FieldNode, SbomNode, ComplexNode, NODE_REDACTED, NODE_PUBLIC
+from petra.models import FieldNode, SbomNode, ComplexNode, NODE_REDACTED, NODE_PUBLIC
 
 class ParallelEncryptVisitor:
 

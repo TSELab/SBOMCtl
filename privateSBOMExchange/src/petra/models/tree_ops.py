@@ -2,9 +2,9 @@ from ast import Dict
 import hashlib
 from lib4sbom.parser import SBOMParser
 
-from petra.lib.models import NODE_PUBLIC, NODE_REDACTED, Node, SbomNode, FieldNode, ComplexNode
-from petra.lib.models.policy import PetraPolicy
-from petra.lib.crypto import digest
+from petra.models import NODE_PUBLIC, NODE_REDACTED, Node, SbomNode, FieldNode, ComplexNode
+from petra.models.policy import PetraPolicy
+from petra.crypto import digest
 
 def build_sbom_tree(parser:SBOMParser, time_tree_clause:str,policy_file: str=None) -> SbomNode:
     """Builds a SBOM tree from an SBOM.""" 

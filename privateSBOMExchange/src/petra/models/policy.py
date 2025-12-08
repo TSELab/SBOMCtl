@@ -1,6 +1,6 @@
 import tomli
 
-from petra.lib.crypto import generate_AES_key
+from petra.crypto import generate_AES_key
 
 class PetraPolicy:
     """ Defines a policy object used for the selective redaction of
