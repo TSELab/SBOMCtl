@@ -124,7 +124,7 @@ We also provide the following example configurations:
 The KMS service handles the key management
 
 ```
-python src/petra/lib/internals/kms.py
+python src/petra/internals/kms.py
 ```
 
 ### Tests
