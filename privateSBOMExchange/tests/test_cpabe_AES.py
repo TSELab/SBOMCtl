@@ -24,7 +24,10 @@ conf = Config("./config/ip-policy.conf")
 sbom_file = conf.get_sbom_files()[0]
 
 pk, mk = cpabe.cpabe_setup()
-sk = cpabe.cpabe_keygen(pk, mk, conf.get_cpabe_group('ip-group'))
+time_attributes="epoch:1767744000"
+user_attributes=conf.get_cpabe_group('ip-group')
+user_attributes.append(time_attributes)
+sk = cpabe.cpabe_keygen(pk, mk, user_attributes)
 
 # Parse SPDX data into a Document object
 SBOM_parser = SBOMParser()   
@@ -32,7 +35,9 @@ SBOM_parser.parse_file(sbom_file)
 
 # build sbom tree
 sbom=SBOM_parser.sbom
-sbom_tree = build_sbom_tree(sbom, conf.get_cpabe_policy('ip-policy'))
+time_tree="(\"epoch:1767744000\")"
+
+sbom_tree = build_sbom_tree(sbom, time_tree,conf.get_cpabe_policy('ip-policy'))
 
 print("done constructing tree")
 

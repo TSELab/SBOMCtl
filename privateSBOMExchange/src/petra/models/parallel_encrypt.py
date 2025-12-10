@@ -36,8 +36,15 @@ class ParallelEncryptVisitor:
         nodes = [x[0] for x in self.workqueue] 
         #with Pool(processes=os.cpu_count()) as pool:
         #    result = pool.starmap(self.target_func, targets)
-        result = cpabe_encrypt_many(pk, policy, plaintext)
-
+        #result = cpabe_encrypt_many(pk, policy, plaintext)
+        if self.target_func is cpabe_encrypt:
+            result = cpabe_encrypt_many(pk, policy, plaintext)
+        else:
+            # ac17: no encrypt_many, call per-node
+            result = [
+                self.target_func(pk, pol, pt)
+                for pol, pt in zip(policy, plaintext)
+            ]
         for node, encrypted_buffer in zip(nodes, result):
             node.encrypted_data = encrypted_buffer
 
@@ -102,7 +109,13 @@ class ParallelDecryptVisitor:
         nodes = [x[0] for x in self.workqueue] 
         #with Pool(processes=os.cpu_count()) as pool:
         #    result = pool.starmap(self.target_func, targets)
-        result = cpabe_decrypt_many(sk, targets)
+
+        if self.target_func is cpabe_decrypt:
+            result = cpabe_decrypt_many(sk, targets)
+        else:
+            # ac17 path: decrypt each ciphertext individually
+            result = [self.target_func(sk, ct) for ct in targets]
+        #result = cpabe_decrypt_many(sk, targets)
 
         for node, decrypted_buffer in zip(nodes, result):
             # decrypted_data is stored as bytes now, cpabe_decrypt returns a list

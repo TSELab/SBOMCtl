@@ -1,3 +1,4 @@
+from cProfile import label
 import json
 import os
 import configparser
@@ -43,14 +44,14 @@ plt.title("Hash Time vs Node Count")
 # Encrypt & Decrypt Time vs File Size
 plt.subplot(2, 2, 3)
 encrypt_times = [x/1e6 for x in encrypt_times] 
-sns.violinplot(y=encrypt_times, x=file_sizes)
+sns.violinplot(y=encrypt_times, x=file_sizes,label="Encrypt Time")
 #sns.boxenplot(y=decrypt_times, x=file_sizes, marker='o', label="Decrypt Time", color='red')
 plt.xlabel("File Size (MB)")
 plt.ylabel("Time (s)")
 plt.title("Encrypt & Decrypt Time vs File Size")
-plt.legend()
+#plt.legend()
 
-#Encrypt & Decrypt Time vs File Size
+#Encrypt & Decrypt Time vs Node count
 plt.subplot(2, 2, 4)
 sns.lineplot(y=encrypt_times, x=tree_nodes_count, marker='o', label="Encrypt Time", color='green')
 sns.lineplot(y=decrypt_times, x=tree_nodes_count, marker='o', label="Decrypt Time", color='red')

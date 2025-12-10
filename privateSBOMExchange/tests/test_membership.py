@@ -1,5 +1,6 @@
 """This tests whether a target has is a member of a tree 
 """
+import configparser
 from lib4sbom.parser import SBOMParser
 from petra.util.config import Config
 from petra.models import  MerkleVisitor
@@ -10,12 +11,16 @@ def is_member(root_hash, target_hash, proof):
 conf = Config("config/bom-only.conf")
 bom_file = conf.get_sbom_files()[0]
 
+config = configparser.ConfigParser()
+config.read('config/config.ini')
+policy_file =  config['POLICY']['empty_policy']
+
 
 # Parse SPDX data into a Document object
 SBOM_parser = SBOMParser()   
 SBOM_parser.parse_file(bom_file)     
 sbom=SBOM_parser.sbom
-sbom_tree = build_sbom_tree(sbom)
+sbom_tree = build_sbom_tree(sbom,"",policy_file)
 
 
 # hash nodes in the tree
