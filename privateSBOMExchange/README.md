@@ -16,12 +16,13 @@ The following files are currently in here
 ├── docs
 ├── config
 ├── policies
+├── Evaluation
 ├── tests
 ├── Makefile
 ├── pyproject.toml
 ├── requirements.txt
 
-Of which, `docs` contains documentation, config contains configuration files, policies contains example policies and Makefile, pyproject.toml and
+Of which, `docs` contains documentation, config contains configuration files, policies contains example policies, Evaluation contains the evaluation scripts and Makefile, pyproject.toml and
 requirements.txt, bootstrap.sh support setting up the project.
 
 ## Setup
@@ -198,3 +199,7 @@ Verify Merkle-style membership proofs for every node in a redacted SBOM.
 petra verify-membership \
   --sbom-file ./sboms/redacted_spdx.json
 
+
+## Petra Evaluation
+
+To run Petra Evaluation, follow the README in the Evaluation Directory
