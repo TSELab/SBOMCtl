@@ -16,7 +16,7 @@ The following files are currently in here
 ├── docs
 ├── config
 ├── policies
-├── Evaluation
+├── evaluation
 ├── tests
 ├── Makefile
 ├── pyproject.toml
@@ -29,13 +29,13 @@ requirements.txt, bootstrap.sh support setting up the project.
 
 You can set up a virtual environment in two ways:
 
-```
+```bash
 make init
 ```
 
 or
 
-```
+```bash
 virtualenv <venv name>
 source <venv name>/bin/activate
 pip install -r requirements.txt
@@ -49,7 +49,7 @@ cpabe is the python bindings for the rust crate rabe, this is needed to support 
 
 Before you run any other code, make sure that these bindings are built by issuing:
 
-```
+```bash
 sudo apt install rustc cargo
 cd src/cpabe
 
@@ -83,7 +83,7 @@ git submodule update --init
 The final setup step generates the SBOM signing and verification keys for
 Petra. Assuming you have openssl installed, generate DER format ECDSA keys:
 
-```
+```bash
 cd tests
 openssl ecparam -name prime256v1 -outform der -genkey -out privkey.der -noout
 openssl ec -inform der -in privkey.der -pubout -outform der -out pubkey.der
@@ -100,7 +100,7 @@ Certain tests will then allow you to pass in the private and public key paths as
 We provide a simple configuration template for Petra in `config/petra.conf.template`. To provide your own configuration,
 point the Petra CLI to your file:
 
-```
+```bash
 from petra.util.config import Config
 
 conf = Config(<path to my config>)
@@ -134,7 +134,7 @@ After the setup, you should be able to run the Petra CLI by running the test fil
 
 For example:
 
-```
+```bash
 python tests/test_models.py
 ```
 
