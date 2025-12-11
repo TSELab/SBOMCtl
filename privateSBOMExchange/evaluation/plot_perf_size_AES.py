@@ -153,7 +153,7 @@ plt.savefig(filename, dpi=300, bbox_inches="tight")
 records['deviation'] = records['encrypt_time'] - records['decrypt_time']
 mean_deviation = records['deviation'].mean()
 total_deviation = records['deviation'].sum()
-print(f"Mean Deviation: {mean_deviation:.2f} ms")
+print(f"Mean encryption–decryption time difference: {mean_deviation:.2f} ms")
 # print(f"Total Deviation: {total_deviation:.2f} ms")
 
 
@@ -167,4 +167,6 @@ records['total_time'] = (records['build_tree_time'] +
 records['decrypt_percentage'] = (records['decrypt_time'] / records['total_time']) * 100
 mean_decrypt_percentage = records['decrypt_percentage'].mean()
 
-print(f"Mean decrypt percentage: {mean_decrypt_percentage:.2f}%")
+
+
+print(f"Mean decryption time percentage: {mean_decrypt_percentage:.2f}%")

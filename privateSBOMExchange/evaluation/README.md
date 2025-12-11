@@ -9,20 +9,20 @@ Choose **one** of the following options to obtain the bom-shelter dataset.
 
 ### Option 1 – Clone bom-shelter directly
 ```bash
-cd SBOMCTL/sbom-data
+cd SBOMCtl/sbom-data
 git clone https://github.com/chainguard-dev/bom-shelter
 ```
 
 ### Option 2 – Use git submodules
 If your repository is already configured with a submodule reference:
 ```bash
-cd SBOMCTL/sbom-data
+cd SBOMCtl/sbom-data
 git submodule init
 git submodule update
 ```
     
 ### Option 3 – Download from Zenodo
-Download the bom-shelter from zenodo into `SBOMCTL/sbom_data` directory:
+Download the bom-shelter from zenodo into `SBOMCtl/sbom_data` directory:
 https://doi.org/10.5281/zenodo.17859760
    
 
@@ -69,28 +69,58 @@ cd privateSBOMExchange
 pip install -e .
 ```
 
-## 2. Preprocess SBOM
+## 3. Preprocess SBOM
 
 Run the preprocessing script to filter and attempt to build SBOM tree for all SBOM files. Successfully built SBOM files will be copied to the target directory specified by `config/config.ini` , while unbuildable files (due to erroneous formats) are skipped.
 
-**Note:** This step may take 20 ~ 30 minutes asit tries to build trees for all SBOMs in the dataset
+**Note:** This step may take 20 ~ 30 minutes as it tries to build trees for all SBOMs in the dataset
 
 
 ```bash
-cd SBOMCTL/privateSBOMExchange
+cd SBOMCtl/privateSBOMExchange
 python evaluation/preprocess_sboms.py
 ```
 
-## 3. Run Evaluations
+## 4. Run Evaluations
 
-Execute the following script to build the SBOM tree, perform CP-ABE operations, and records timing results.
+Execute the following script to build the SBOM tree, perform CP-ABE operations, and record timing results.
 
 ```bash
 python evaluation/test_evaluations_AES.py
 ```
-Performance results will be saved automatically in `performance.json` in the results directory configured in `config/config.ini`.
+For each tested policy, Petra saves the performance results in a JSON file named after the policy under the results directory (as configured in config/config.ini).
 
-## 4. Plot Performance
+### A typical output file looks like
+```json
+{
+    "file_size": 844067,
+    "build_tree_time": 0.11136531829833984,
+    "hash_time": 0.03237414360046387,
+    "encrypt_time": 0.004314899444580078,
+    "decrypt_time": 0.0029273033142089844,
+    "tree_nodes_count": 9155,
+    "sbom_tree_storage": 5516808,
+    "encrypted_tree_storage": 6176040,
+    "decrypted_tree_storage": 9325576,
+    "policy": "weaknesses_policy"
+}
+```
+### Field Descriptions
+**file_size**: Size of the input SBOM file in bytes.
+**build_tree_time**: Time (in seconds) to construct the SBOM tree.
+**hash_time**: Time to compute the Merkle-style hashing of all tree nodes.
+**encrypt_time**: Time to encrypt all policy-relevant nodes using the CP-ABE scheme.
+**decrypt_time**: Time to decrypt the encrypted nodes.
+**tree_nodes_count**: Total number of nodes in the constructed SBOM tree.
+**sbom_tree_storage**: Size (in bytes) of the plaintext SBOM tree.
+**encrypted_tree_storage**: Size (in bytes) of the encrypted SBOM tree.
+**decrypted_tree_storage**: Size (in bytes) of the SBOM tree after decryption.
+**policy**: Name of the policy used during this run.
+
+### Using the Results for Plotting
+The generated performance files are automatically consumed by the plotting scripts in evaluation/, which aggregate metrics across policies and produce comparative performance visualizations.
+
+## 5. Plot Performance
 
 Generate performance plots with:
 
@@ -98,5 +128,46 @@ Generate performance plots with:
 python evaluation/plot_perf_size_AES.py
 ```
 
-Output plots will be saved automatically inside the results directory configured in `config/config.ini`.
+For each tested policy, the corresponding plots are automatically saved in a subdirectory named after the policy inside the results directory specified in `config/config.ini`.
 
+### Saved plots
+
+The following plots are generated for each policy:
+
+- build_tree_time_vs_file_size.png    
+- decrypt_time_vs_file_size.png          
+- decrypt_time_vs_tree_nodes_count.png    
+- decrypted_tree_storage_vs_file_size.png 
+- encrypt_time_decrypt_time.png           
+- encrypt_time_vs_file_size.png          
+- encrypt_time_vs_tree_nodes_count.png   
+- sbom_tree_storage_vs_file_size.png
+- tree_nodes_count_vs_file_size.png
+- hash_time_vs_tree_nodes_count.png
+- encrypted_tree_storage_vs_file_size.png
+
+### Computed Statistics
+The script also calculates the following statistics:
+
+- Average Percentage Increase from SBOM Tree Size to Encrypted Tree Size
+- Average Percentage Increase from Encrypted Tree Size to Decrypted Tree Size
+- Ratio of encrypted_tree_storage to sbom_tree_storage
+- Mean encryption–decryption time difference
+- Mean decryption time percentage
+
+## 6. Interpreting the Results and Comparing with the Paper
+
+The performance computed statistics and plots produced by Petra correspond directly to the evaluation presented in the paper.
+
+The plots `encrypt_time_vs_tree_nodes_count.png` and `decrypt_time_vs_tree_nodes_count.png` represent the CP-ABE overhead and correspond to Figures 5 and 6 respectively.
+
+**sbom_tree_storage**, **encrypted_tree_storage**, and **decrypted_tree_storage** metrics illustrate the storage overhead due to building sbom tree, encryption, and decryption respectively.
+
+The **Computed Statistics** :  
+**Average Percentage Increase from SBOM Tree Size to Encrypted Tree Size** and **Average Percentage Increase from Encrypted Tree Size to Decrypted Tree Size**  corresponds to encryption and decryption storage overhead results in Section **6.1.1 Storage Overhead** of the paper.
+
+The **Computed Statistics** :  
+**Mean decryption time percentage** corresponds to **Decryption Time Percentage** in the **Abstract** and **1. Introduction**
+
+
+By comparing your generated plots and statistics with those in the paper, you can verify that Petra exhibits the expected performance behavior on your dataset or configuration.
