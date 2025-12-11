@@ -1,6 +1,6 @@
 import configparser
 import os
-import tqdm
+from tqdm import tqdm
 import shutil
 import time
 from lib4sbom.parser import SBOMParser
