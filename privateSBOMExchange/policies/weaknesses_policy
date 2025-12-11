@@ -32,6 +32,6 @@
 # Access Control Rules
 # ....................
 [package]
-version = ("Government Agency" and "Confidential Security Clearance Level") or ("Vulnerability Scanner" and "licensed" and "FedRAMP approved") or ("Auditor" and "Audit Authorization status of Approved") or ("Security Analyst" and "Confidential Security Clearance Level" ) 
+version = '("Government Agency" and "Confidential Security Clearance Level") or ("Vulnerability Scanner" and "licensed" and "FedRAMP approved") or ("Auditor" and "Audit Authorization status of Approved") or ("Security Analyst" and "Confidential Security Clearance Level" )' 
 [vulnerability]
-* = ("Government Agency" and "Confidential Security Clearance Level") or ("Vulnerability Scanner" and "licensed" and "FedRAMP approved") or ("Auditor" and "Audit Authorization status of Approved") or ("Security Analyst" and "Confidential Security Clearance Level" ) 
+"*" = '("Government Agency" and "Confidential Security Clearance Level") or ("Vulnerability Scanner" and "licensed" and "FedRAMP approved") or ("Auditor" and "Audit Authorization status of Approved") or ("Security Analyst" and "Confidential Security Clearance Level" )'

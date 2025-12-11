@@ -45,3 +45,4 @@ PyJWT[crypto]>=2.9.0,<3.0.0
 tqdm
 matplotlib
 seaborn
+pympler
