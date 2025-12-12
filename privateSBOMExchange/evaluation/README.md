@@ -1,7 +1,50 @@
 # Petra Evaluation Guide
 
-This guide provides step-by-step instructions for evaluating **Petra** using SBOM dataset.  
+This guide provides step-by-step instructions for evaluating **Petra** using SBOM dataset.   
 You will download an SBOM corpus, preprocess it, run the evaluation benchmarks, and generate performance plots.
+
+## **Docker Option (skips Steps 1 and 2 below)**
+If you prefer a fully containerized setup (that has all the petra setup and dataset), you can run Petra using the provided Docker file. This option packages Petra + cpabe bindings + the bom-shelter dataset inside the container, so you can start directly from preprocessing and evaluation.
+
+**A. Build the Docker image**
+From the repository root (SBOMCtl):
+```bash
+cd SBOMCtl
+docker build -f dockerfiles/petra_evaluation -t petra-eval .
+```
+**B. Start a long-lived container**
+This starts the container in the background and keeps it alive:
+```bash
+cd SBOMCtl
+docker run -d --name petra-eval petra-eval tail -f /dev/null
+```
+**Enter the container anytime**
+```bash
+docker exec -it petra-eval bash
+```
+**C. Run preprocessing, evaluations, and plotting (inside container)**
+```bash
+cd privateSBOMExchange
+
+python evaluation/preprocess_sboms.py
+python evaluation/test_evaluations_AES.py
+python evaluation/plot_perf_size_AES.py
+```
+For details about these scripts see ***steps 3,4,5*** below.
+
+**D. Retrieve results (optional)**
+
+To copy the results directory from the container to your host:
+```bash
+docker cp petra-eval:/evaluation/privateSBOMExchange/<RESULTS_DIR_ON_CONTAINER> ./petra-results
+<RESULTS_DIR_ON_CONTAINER> is the results directory configured in config/config.ini.
+```
+
+**E. Stop / remove the container**
+```bash
+docker stop petra-eval
+docker rm petra-eval
+```
 
 ## 1. Download SBOM Dataset
 

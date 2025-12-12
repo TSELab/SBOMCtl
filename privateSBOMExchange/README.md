@@ -202,4 +202,4 @@ petra verify-membership \
 
 ## Petra Evaluation
 
-To run Petra Evaluation, follow the README in the Evaluation Directory
+To run Petra Evaluation, follow the README in the SBOMCtl/evaluation Directory
