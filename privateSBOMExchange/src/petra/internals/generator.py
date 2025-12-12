@@ -3,10 +3,10 @@ from typing import List
 from lib4sbom.parser import SBOMParser
 import requests
 
-from petra.lib.models.tree_ops import build_sbom_tree
-from petra.lib.models import MerkleVisitor, EncryptVisitor
-from petra.lib.util.config import Config
-from petra.lib.internals.common.common import sign_sbom_tree
+from petra.models.tree_ops import build_sbom_tree
+from petra.models import MerkleVisitor, EncryptVisitor
+from petra.util.config import Config
+from petra.internals.common.common import sign_sbom_tree
 
 kms_conf = Config("./config/kms_and_attribute-namespace.conf")
 

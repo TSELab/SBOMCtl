@@ -4,8 +4,8 @@ import jwt
 import base64
 import requests
 from flask import Flask, jsonify
-from petra.lib.auth.google_oidc import authenticate_and_get_id_token
-from petra.lib.util.config import Config
+from petra.auth.google_oidc import authenticate_and_get_id_token
+from petra.util.config import Config
 from urllib.parse import urlparse
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization

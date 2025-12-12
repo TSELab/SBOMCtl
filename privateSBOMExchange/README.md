@@ -12,26 +12,30 @@ This directory contains the two modules needed to run the Petra system (currentl
 
 The following files are currently in here
 ├── bootstrap.sh
+├── src
 ├── docs
+├── config
+├── policies
+├── evaluation
+├── tests
 ├── Makefile
 ├── pyproject.toml
 ├── requirements.txt
-├── src
 
-Of which, `docs` contains documentation, and Makefile, pyproject.toml and
+Of which, `docs` contains documentation, config contains configuration files, policies contains example policies, Evaluation contains the evaluation scripts and Makefile, pyproject.toml and
 requirements.txt, bootstrap.sh support setting up the project.
 
 ## Setup
 
 You can set up a virtual environment in two ways:
 
-```
+```bash
 make init
 ```
 
 or
 
-```
+```bash
 virtualenv <venv name>
 source <venv name>/bin/activate
 pip install -r requirements.txt
@@ -45,9 +49,9 @@ cpabe is the python bindings for the rust crate rabe, this is needed to support 
 
 Before you run any other code, make sure that these bindings are built by issuing:
 
-```
+```bash
 sudo apt install rustc cargo
-cd cpabe
+cd src/cpabe
 
 maturin develop
 ```
@@ -79,7 +83,7 @@ git submodule update --init
 The final setup step generates the SBOM signing and verification keys for
 Petra. Assuming you have openssl installed, generate DER format ECDSA keys:
 
-```
+```bash
 cd tests
 openssl ecparam -name prime256v1 -outform der -genkey -out privkey.der -noout
 openssl ec -inform der -in privkey.der -pubout -outform der -out pubkey.der
@@ -96,8 +100,8 @@ Certain tests will then allow you to pass in the private and public key paths as
 We provide a simple configuration template for Petra in `config/petra.conf.template`. To provide your own configuration,
 point the Petra CLI to your file:
 
-```
-from petra.lib.util.config import Config
+```bash
+from petra.util.config import Config
 
 conf = Config(<path to my config>)
 ```
@@ -121,7 +125,7 @@ We also provide the following example configurations:
 The KMS service handles the key management
 
 ```
-python src/petra/lib/internals/kms.py
+python src/petra/internals/kms.py
 ```
 
 ### Tests
@@ -130,7 +134,7 @@ After the setup, you should be able to run the Petra CLI by running the test fil
 
 For example:
 
-```
+```bash
 python tests/test_models.py
 ```
 
@@ -195,3 +199,7 @@ Verify Merkle-style membership proofs for every node in a redacted SBOM.
 petra verify-membership \
   --sbom-file ./sboms/redacted_spdx.json
 
+
+## Petra Evaluation
+
+To run Petra Evaluation, follow the README in the SBOMCtl/evaluation Directory

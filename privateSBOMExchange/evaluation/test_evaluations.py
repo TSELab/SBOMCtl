@@ -1,21 +1,19 @@
 import configparser
 import copy
 import os
-import sys
 import time
 import json
-from tqdm import tqdm
 from lib4sbom.parser import SBOMParser
 import configparser
 from multiprocessing import Pool
-
-from petra.lib.models import *
-from petra.lib.models.parallel_encrypt import ParallelEncryptVisitor, ParallelDecryptVisitor
-from petra.lib.models.tree_ops import GetTargetNodes
+from tqdm import tqdm
+from petra.models import *
+from petra.models.parallel_encrypt import ParallelEncryptVisitor, ParallelDecryptVisitor
+from petra.models.tree_ops import GetTargetNodes, build_sbom_tree
 import cpabe
 
-"""This tests whether a target has is a member of a tree 
-"""
+
+
 
 config = configparser.ConfigParser()
 config.read('config/config.ini')
@@ -26,11 +24,12 @@ results_dir = config['DEFAULT']['results']
 os.makedirs(results_dir, exist_ok=True)
 
 
-Groups = [["Security Auditor", "Audit Authorization status of Approved"], ["Security Analyst", "Confidential Security Clearance Level" ]]
+#Groups = [["Security Auditor", "Audit Authorization status of Approved"], ["Security Analyst", "Confidential Security Clearance Level" ]]
+Groups = [["Security Auditor", "Audit Authorization status of Approved","epoch:1767744000"], ["Security Analyst", "Confidential Security Clearance Level" ,"epoch:1767744000"]]
 
 
 pk, mk = cpabe.cpabe_setup();
-sk = cpabe.cpabe_keygen(pk, mk, Groups[1])
+sk = cpabe.cpabe_keygen(pk, mk, Groups[0])
 
 # too wide, to many nodes to verify membership for. For function tests, skip
 too_wide_sboms = []
@@ -43,8 +42,9 @@ def log(s):
     if DEBUG:
         print(s)
 
-def build_tree(sbom):
-    return build_sbom_tree(sbom)
+def build_tree(sbom,policy):
+    time_tree="(\"epoch:1767744000\")"
+    return build_sbom_tree(sbom,time_tree,policy)
 
 def hash_tree_node(sbom_tree):
     # hash nodes in the tree
@@ -57,9 +57,9 @@ def get_tree_node_hashes(sbom_tree):
     target_hashes = hash_hunter.get_hashes()
     return target_hashes
 
-def encrypt_contents(sbom_tree,pk,Policy):
-    #encrypt_visitor = EncryptVisitor(pk,Policy)
-    encrypt_visitor = ParallelEncryptVisitor(pk,Policy)
+def encrypt_contents(sbom_tree,pk):
+    #encrypt_visitor = EncryptVisitor(pk)
+    encrypt_visitor = ParallelEncryptVisitor(pk)
     sbom_tree.accept(encrypt_visitor)
     encrypt_visitor.finalize()
 
@@ -83,11 +83,12 @@ def process_sbom(sbom_file):
         return
     sbom=SBOM_parser.sbom
 
+    print("Building Tree")
     start_time = time.time()
-    sbom_tree = build_tree(sbom)
+    sbom_tree = build_tree(sbom,policy_files[0])
     build_tree_time = time.time() - start_time
     
-
+    print("Hashing Tree")
     start_time = time.time()
     hash_tree_node(sbom_tree)
     hash_time = time.time() - start_time
@@ -95,12 +96,14 @@ def process_sbom(sbom_file):
     tree_nodes = get_tree_node_hashes(sbom_tree)
 
     start_time = time.time()
-    encrypt_contents(sbom_tree,pk,policy_files[1])
+    print("Encrypting Tree")
+    encrypt_contents(sbom_tree,pk)
     encrypt_time = time.time() - start_time
 
 
     tree_nodes_count = len(tree_nodes)
 
+    print("Decrypting Tree")
     start_time = time.time()
     decrypt_contents(sbom_tree, sk)
     decrypt_time = time.time() - start_time
@@ -113,7 +116,7 @@ def process_sbom(sbom_file):
         "decrypt_time": decrypt_time,
         "tree_nodes_count": tree_nodes_count,
     }
-
+    print("Done with SBOM {}...".format(sbom_file))
     store_data(to_store)
 
 def store_data(performance_data, file=write_to):
@@ -132,10 +135,8 @@ if __name__ == "__main__":
 #    with Pool(processes=os.cpu_count()) as pool:
 #        pool.map(process_sbom, target_sboms)
     
-    for sbom in target_sboms:
+    for sbom in tqdm(target_sboms, desc="Evaluating SBOMs"):
         process_sbom(sbom)
 
     log(f"\nAll {total_processed} sboms processed")
-
-
-
+    

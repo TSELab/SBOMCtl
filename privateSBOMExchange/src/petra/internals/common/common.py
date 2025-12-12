@@ -1,7 +1,6 @@
-import requests
 import os
 import tempfile
-from petra.lib.util.config import Config
+from petra.util.config import Config
 from cryptography.hazmat.primitives import serialization
 
 kms_conf = Config("./config/kms_and_attribute-namespace.conf")

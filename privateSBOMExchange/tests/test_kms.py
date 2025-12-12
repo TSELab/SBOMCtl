@@ -2,16 +2,15 @@ import copy
 from lib4sbom.parser import SBOMParser
 import json
 import argparse
-import requests
 
-from petra.lib.models.tree_ops import build_sbom_tree, verify_sameness
-from petra.lib.models import MerkleVisitor, EncryptVisitor, DecryptVisitor
-from petra.lib.util.config import Config
-from petra.lib.models import SbomNode
-from petra.lib.models.tree_ops import serialize_tree
-from petra.lib.internals.producer import Producer
-from petra.lib.internals.consumer import Consumer
-from petra.lib.internals.distributor import Distributor
+from petra.models.tree_ops import build_sbom_tree, verify_sameness
+from petra.models import MerkleVisitor, EncryptVisitor, DecryptVisitor
+from petra.util.config import Config
+from petra.models import SbomNode
+from petra.models.tree_ops import serialize_tree
+from petra.internals.producer import Producer
+from petra.internals.consumer import Consumer
+from petra.internals.distributor import Distributor
 
 
 # read in the IP policy config

@@ -4,10 +4,10 @@ from ast import Dict
 from typing import Any, List
 
 from cpabe import cpabe_encrypt,cpabe_decrypt
-from petra.lib.models.policy import PetraPolicy
-from petra.lib.crypto import Commitment, digest, DEFAULT_HASH_SIZE_BYTES
-from petra.lib.crypto import decrypt_data_AES, encrypt_data_AES
-from petra.lib.crypto import ecdsa_sign, ecdsa_sig_verify
+from petra.models.policy import PetraPolicy
+from petra.crypto import Commitment, digest, DEFAULT_HASH_SIZE_BYTES
+from petra.crypto import decrypt_data_AES, encrypt_data_AES
+from petra.crypto import ecdsa_sign, ecdsa_sig_verify
 
 # node markers
 NODE_REDACTED = "encrypted"

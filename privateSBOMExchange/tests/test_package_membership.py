@@ -3,9 +3,9 @@
 import copy
 
 from lib4sbom.parser import SBOMParser
-from petra.lib.util.config import Config
-from petra.lib.models import MerkleVisitor, EncryptVisitor, DecryptVisitor
-from petra.lib.models.tree_ops import GetTargetNodes, get_membership_proof, verify_membership_proof,build_sbom_tree
+from petra.util.config import Config
+from petra.models import MerkleVisitor, EncryptVisitor, DecryptVisitor
+from petra.models.tree_ops import GetTargetNodes, get_membership_proof, verify_membership_proof,build_sbom_tree
 import cpabe
 
 def is_member(root_hash, target_hash, proof):
@@ -14,7 +14,10 @@ def is_member(root_hash, target_hash, proof):
 conf = Config("config/log4j-membership-policy.conf")
 sbom_file = conf.get_sbom_files()[0]
 pk, mk = cpabe.cpabe_setup()
-sk = cpabe.cpabe_keygen(pk, mk, conf.get_cpabe_group('vuln-group'))
+user_attributes= conf.get_cpabe_group('vuln-group')
+time_attributes="epoch:1767744000"
+user_attributes.append(time_attributes)
+sk = cpabe.cpabe_keygen(pk, mk, user_attributes)
 
 # Parse SPDX data into a Document object
 SBOM_parser = SBOMParser()   
@@ -22,7 +25,9 @@ SBOM_parser.parse_file(sbom_file)
 
 # build sbom tree
 sbom=SBOM_parser.sbom
-sbom_tree = build_sbom_tree(sbom, conf.get_cpabe_policy('vuln-policy'))
+time_tree="(\"epoch:1767744000\")"
+
+sbom_tree = build_sbom_tree(sbom, time_tree,conf.get_cpabe_policy('vuln-policy'))
 
 encrypt_visitor = EncryptVisitor(pk)
 sbom_tree.accept(encrypt_visitor)

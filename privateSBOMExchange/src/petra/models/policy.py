@@ -1,6 +1,6 @@
 import tomli
 
-from petra.lib.crypto import generate_AES_key
+from petra.crypto import generate_AES_key
 
 class PetraPolicy:
     """ Defines a policy object used for the selective redaction of
@@ -32,7 +32,7 @@ class PetraPolicy:
                 node_policy = f"({field_rule}) and {self.time_tree_clause}"
                 if node_policy not in self.__all_policies:
                     self.__all_policies[node_policy] = generate_AES_key() 
-                    print(f"\n\nPolicy:{ node_policy}")
+                    #print(f"\n\nPolicy:{ node_policy}")
         return node_policy
 
     def get_complex_node_policy(self, complex_node_type: str) -> (str, dict):
@@ -48,7 +48,7 @@ class PetraPolicy:
                 node_policy: str = f"({all_fields_rule}) and {self.time_tree_clause}"
                 if node_policy not in self.__all_policies:
                     self.__all_policies[node_policy] = generate_AES_key() 
-                    print(f"\n\nPolicy:{ node_policy}")
+                    #print(f"\n\nPolicy:{ node_policy}")
             
         return node_policy, type_rules
     
