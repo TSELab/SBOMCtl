@@ -6,7 +6,7 @@ defusedxml
 distlib
 dotenv
 isodate
-lib4sbom
+lib4sbom== 0.7.5
 numpy
 pandas
 platformdirs
