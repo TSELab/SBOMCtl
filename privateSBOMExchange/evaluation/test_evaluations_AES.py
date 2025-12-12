@@ -14,8 +14,7 @@ from petra.models import *
 from petra.models.tree_ops import GetTargetNodes
 import cpabe
 
-"""This tests whether a target has is a member of a tree 
-"""
+
 
 config = configparser.ConfigParser()
 config.read('config/config.ini')
@@ -31,14 +30,11 @@ Groups = [["Security Analyst", "works at DoD","epoch:1767744000"], ["Security An
 
 
 pk, mk = cpabe.cpabe_setup();
-sk = cpabe.cpabe_keygen(pk, mk, Groups[1])
 
 # too wide, to many nodes to verify membership for. For function tests, skip
 too_wide_sboms = []
 
 policy_files = [config['POLICY'][key] for key in ("intellectual_property_policy", "weaknesses_policy")]
-policy_file = policy_files[1]
-write_to = os.path.join(results_dir, f"performance_{policy_file.split('/')[-1]}.json")
 
 DEBUG = True
 def log(s):
@@ -60,7 +56,7 @@ def get_tree_node_hashes(sbom_tree):
     target_hashes = hash_hunter.get_hashes()
     return target_hashes
 
-def encrypt_contents(sbom_tree,pk,Policy):
+def encrypt_contents(sbom_tree,pk):
     encrypt_visitor = EncryptVisitor(pk)
     sbom_tree.accept(encrypt_visitor)
     # print("done encrypting")
@@ -73,7 +69,7 @@ def decrypt_contents(sbom_tree, sk):
     # decrypt_visitor.finalize()
     return sbom_tree
 
-def process_sbom(sbom_file):
+def process_sbom(sbom_file,policy,policy_number):
     sbom_file = os.path.join(target_sbom_dir, sbom_file)
     sbom_file_size = os.path.getsize(sbom_file)
     
@@ -88,7 +84,7 @@ def process_sbom(sbom_file):
     sbom=SBOM_parser.sbom
 
     start_time = time.time()
-    sbom_tree = build_tree(sbom, policy_file)
+    sbom_tree = build_tree(sbom, policy)
     build_tree_time = time.time() - start_time
     sbom_tree_storage = asizeof.asizeof(sbom_tree)
     
@@ -101,13 +97,15 @@ def process_sbom(sbom_file):
 
     start_time = time.time()
     #encrypt_contents(sbom_tree,pk,policy_files[1])
-    encrypted_tree = encrypt_contents(sbom_tree,pk,policy_file)
+    encrypted_tree = encrypt_contents(sbom_tree,pk)
     encrypt_time = time.time() - start_time
     encrypted_tree_storage = asizeof.asizeof(encrypted_tree)
 
 
     redacted_tree = copy.deepcopy(sbom_tree)
     tree_nodes_count = len(tree_nodes)
+
+    sk = cpabe.cpabe_keygen(pk, mk, Groups[policy_number])
 
     start_time = time.time()
     decrypted_tree = decrypt_contents(redacted_tree, sk)
@@ -124,29 +122,36 @@ def process_sbom(sbom_file):
         "sbom_tree_storage": sbom_tree_storage,
         "encrypted_tree_storage": encrypted_tree_storage,
         "decrypted_tree_storage": decrypted_tree_storage,
-        "policy": policy_file.split('/')[-1]
+        "policy": policy.split('/')[-1]
     }
+    write_to = os.path.join(results_dir, f"performance_{policy.split('/')[-1]}.json")
+    store_data(to_store,write_to)
 
-    store_data(to_store)
-
-def store_data(performance_data, file=write_to):
-    with open(file, 'a') as file:
+def store_data(performance_data, write_to):
+        
+    with open(write_to, 'a') as file:
         file.write(json.dumps(performance_data) + "\n")
 
 if __name__ == "__main__":
     # reset file for new test
-    if os.path.exists(write_to):
-        os.remove(write_to)
 
-    target_sboms = os.listdir(target_sbom_dir)
-    total_processed = len(target_sboms)
+    for policy_number, policy in enumerate(policy_files):
+        print("\n" + "=" * 60)
+        print(f"Processing policy: {policy}")
+        print("=" * 60)
 
-    print("Started processing sboms....")
-#    with Pool(processes=os.cpu_count()) as pool:
- #       pool.map(process_sbom, target_sboms)
+        target_sboms = os.listdir(target_sbom_dir)
+        total_processed = len(target_sboms)
+
+        print("Started processing sboms....")
+    #    with Pool(processes=os.cpu_count()) as pool:
+    #       pool.map(process_sbom, target_sboms)
     
-    for sbom in tqdm(target_sboms , desc="Evaluating SBOMs"):
-        process_sbom(sbom)
+        write_to = os.path.join(results_dir, f"performance_{policy.split('/')[-1]}.json")
+        if os.path.exists(write_to):
+            os.remove(write_to)
+        for sbom in tqdm(target_sboms , desc="Evaluating SBOMs"):
+            process_sbom(sbom,policy,policy_number)
 
-    log(f"\nAll {total_processed} sboms processed")
+        log(f"\nAll {total_processed} sboms processed")
 
