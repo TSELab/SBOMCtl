@@ -108,13 +108,13 @@ def process_policy(policy_name: str):
     #configurations for each plot
     plot_configs = [
         {"y": "build_tree_time", "x": "file_size", "ylabel": "Build Tree Time (ms)", "xlabel": "File Size (MB)", "palette": "tab20"},
-        {"y": "hash_time", "x": "tree_nodes_count", "ylabel": "Hash Time (ms)", "xlabel": "Node Count (100K)", "palette": "tab20", "xtick_interval": 4},
+        {"y": "hash_time", "x": "tree_nodes_count", "ylabel": "Hash Time (ms)", "xlabel": "Node Count (10k)", "palette": "tab20", "xtick_interval": 4},
         {"y": "encrypt_time", "x": "file_size", "ylabel": "Encrypt Time (ms)", "xlabel": "File Size (MB)", "palette": "tab20", "xtick_interval": 4},
         {"y": "decrypt_time", "x": "file_size", "ylabel": "Decrypt Time (ms)", "xlabel": "File Size (MB)", "palette": "tab20", "xtick_interval": 4},
-        {"y": "encrypt_time", "x": "tree_nodes_count", "ylabel": "Encrypt Time (ms)", "xlabel": "Node Count (100K)", "palette": "tab20", "xtick_interval": 4},
-        {"y": "decrypt_time", "x": "tree_nodes_count", "ylabel": "Decrypt Time (ms)", "xlabel": "Node Count (100K)", "palette": "tab20", "xtick_interval": 4},
-        {"x": "file_size", "y": "tree_nodes_count", "xlabel": "File Size (MB)", "ylabel": "Node Count (100K)", "palette": "tab20", "xtick_interval": 4},
-        # {"y": "sbom_tree_storage", "x": "tree_nodes_count", "ylabel": "SBOM Tree Size (MB)", "xlabel": "Node Count (100K)", "palette": "tab20", "ylim": (0, 200), "xtick_interval": 4},
+        {"y": "encrypt_time", "x": "tree_nodes_count", "ylabel": "Encrypt Time (ms)", "xlabel": "Node Count (10k)", "palette": "tab20", "xtick_interval": 4},
+        {"y": "decrypt_time", "x": "tree_nodes_count", "ylabel": "Decrypt Time (ms)", "xlabel": "Node Count (10k)", "palette": "tab20", "xtick_interval": 4},
+        {"x": "file_size", "y": "tree_nodes_count", "xlabel": "File Size (MB)", "ylabel": "Node Count (10k)", "palette": "tab20", "xtick_interval": 4},
+        # {"y": "sbom_tree_storage", "x": "tree_nodes_count", "ylabel": "SBOM Tree Size (MB)", "xlabel": "Node Count (10k)", "palette": "tab20", "ylim": (0, 200), "xtick_interval": 4},
         {"y": "sbom_tree_storage", "x": "file_size", "ylabel": "SBOM Tree Size (MB)", "xlabel": "File Size (MB)", "palette": "tab20", "xtick_interval": 4},
         {"y": "encrypted_tree_storage", "x": "file_size", "ylabel": "Encrypted Tree Size (MB)", "xlabel": "File Size (MB)", "palette": "tab20", "xtick_interval": 4},
         {"y": "decrypted_tree_storage", "x": "file_size", "ylabel": "Decrypted Tree Size (MB)", "xlabel": "File Size (MB)", "palette": "tab20", "xtick_interval": 4}
