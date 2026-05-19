@@ -69,6 +69,13 @@ class FieldNode(Node):
         return visitor.visit_field_node(self)
 
     def serialize_field_data(self) -> bytes:
+
+        decrypted_hex = self.decrypted_data
+
+        if decrypted_hex:
+            decrypted_bytes = bytes.fromhex(decrypted_hex)
+            plaintext_bytes = decrypted_bytes[DEFAULT_HASH_SIZE_BYTES:]
+            return plaintext_bytes.decode("utf-8", errors="replace")
         return (f"{self.field_name}:{self.field_value}").encode("utf-8")
 
     def serialize_for_hashing(self, ser_node_data:bytes, commit_val: bytes) -> bytes:
@@ -685,9 +692,9 @@ class DecryptVisitor:
         if node.encrypted_data != NODE_PUBLIC:
             try:
                 node.decrypted_data = decrypt_data_AES(node.encrypted_data, self.__decrypted_aes_keys[node.policy])
-
+                
                 # debug
-                #print(node.decrypted_data)
+                print(node.decrypted_data)
             except Exception as e:
                 print(f"Decryption failed with error: {e}")
         else:

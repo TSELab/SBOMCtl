@@ -1,0 +1,85 @@
+digraph SBOMTree {
+	rankdir=TB
+	splines=ortho
+	nodesep=0.4 ranksep=0.7
+	node [fontname=Helvetica fontsize=10]
+	edge [color="#6b7280" fontsize=8]
+	n0 [label="SBOM
+purl: docker.io/library/nats-latest
+hash: 3fcb63d" fillcolor="#dbeafe" shape=box style=filled]
+	n1 [label="Document
+hash: 571d8f0" fillcolor="#e0f2fe" shape=box style="filled,dashed"]
+	n0 -> n1 [label=""]
+	n2 [label="version: SPDX-2.2
+hash: 09f6989" fillcolor="#eff6ff" shape=box style="filled,dotted"]
+	n1 -> n2 [label=""]
+	n3 [label="id: SPDXRef-DOCUMENT
+hash: 6becf6d" fillcolor="#eff6ff" shape=box style="filled,dotted"]
+	n1 -> n3 [label=""]
+	n4 [label="datalicense: CC0-1.0
+hash: 0707248" fillcolor="#eff6ff" shape=box style="filled,dotted"]
+	n1 -> n4 [label=""]
+	n5 [label="type: spdx
+hash: 0099219" fillcolor="#eff6ff" shape=box style="filled,dotted"]
+	n1 -> n5 [label=""]
+	n6 [label="name: docker.io/library/nats-latest
+hash: caca475" fillcolor="#eff6ff" shape=box style="filled,dotted"]
+	n1 -> n6 [label=""]
+	n7 [label="uuid: https://anchore.com/syft/image/docker.io/library/nats-latest-3e8d68f7-fa81-4629-9149-dd4189ff55ee
+hash: 52c7f0a" fillcolor="#eff6ff" shape=box style="filled,dotted"]
+	n1 -> n7 [label=""]
+	n8 [label="created: 2022-10-05T17:16:51.717689Z
+hash: 37db82b" fillcolor="#eff6ff" shape=box style="filled,dotted"]
+	n1 -> n8 [label=""]
+	n9 [label="creator: [['Organization', ' Anchore, Inc'], ['Tool', ' syft-0.57.0']]
+hash: b5a0f4e" fillcolor="#eff6ff" shape=box style="filled,dotted"]
+	n1 -> n9 [label=""]
+	n10 [label="Package
+hash: d6a1091" fillcolor="#e0f2fe" shape=box style="filled,dashed"]
+	n0 -> n10 [label=""]
+	n11 [label="name: github.com/klauspost/compress
+hash: 7d8aefb" fillcolor="#eff6ff" shape=box style="filled,dotted"]
+	n10 -> n11 [label=""]
+	n12 [label="id: SPDXRef-dc3b09961db53002
+hash: 10ca725" fillcolor="#eff6ff" shape=box style="filled,dotted"]
+	n10 -> n12 [label=""]
+	n13 [label="type: LIBRARY
+hash: e2b985a" fillcolor="#eff6ff" shape=box style="filled,dotted"]
+	n10 -> n13 [label=""]
+	n14 [label="version: v1.15.11
+hash: c290ef7" fillcolor="#eff6ff" shape=box style="filled,dotted"]
+	n10 -> n14 [label=""]
+	n15 [label="filesanalysis: False
+hash: 8660ef5" fillcolor="#eff6ff" shape=box style="filled,dotted"]
+	n10 -> n15 [label=""]
+	n16 [label="sourceinfo: acquired package info from go module information: /nats-server
+hash: 6d67f28" fillcolor="#eff6ff" shape=box style="filled,dotted"]
+	n10 -> n16 [label=""]
+	n17 [label="licenseconcluded: NONE
+hash: 9619a6e" fillcolor="#eff6ff" shape=box style="filled,dotted"]
+	n10 -> n17 [label=""]
+	n18 [label="licensedeclared: NONE
+hash: 680fab6" fillcolor="#eff6ff" shape=box style="filled,dotted"]
+	n10 -> n18 [label=""]
+	n19 [label="externalreference: [['SECURITY', 'cpe23Type', 'cpe:2.3:a:klauspost:compress:v1.15.11:*:*:*:*:*:*:*'], ['PACKAGE_MANAGER', 'purl', 'pkg:golang/github.com/klauspost/compress@v1.15.11']]
+hash: a97bf10" fillcolor="#eff6ff" shape=box style="filled,dotted"]
+	n10 -> n19 [label=""]
+	n20 [label="File
+hash: 5a5fd7e" fillcolor="#e0f2fe" shape=box style="filled,dashed"]
+	n0 -> n20 [label=""]
+	n21 [label="name: /nats-server
+hash: fb5a9e2" fillcolor="#eff6ff" shape=box style="filled,dotted"]
+	n20 -> n21 [label=""]
+	n22 [label="id: SPDXRef-35c336bb79c4bd14
+hash: 89bf9c7" fillcolor="#eff6ff" shape=box style="filled,dotted"]
+	n20 -> n22 [label=""]
+	n23 [label="filetype: ['APPLICATION', 'BINARY']
+hash: 5354fa4" fillcolor="#eff6ff" shape=box style="filled,dotted"]
+	n20 -> n23 [label=""]
+	n24 [label="licenseconcluded: NOASSERTION
+hash: e39f34f" fillcolor="#eff6ff" shape=box style="filled,dotted"]
+	n20 -> n24 [label=""]
+	n25 [label="comment: layerID: sha256:3f69cb78badf6f261ad350f4970044bd0a7898d7cf0aaa5a5e3e3b972616bfec
+hash: a8fe2ff" fillcolor="#eff6ff" shape=box style="filled,dotted"]
+	n20 -> n25 [label=""]
+}

@@ -3,6 +3,7 @@ import json
 import jwt
 import base64
 import requests
+import urllib3
 from flask import Flask, jsonify
 from petra.auth.google_oidc import authenticate_and_get_id_token
 from petra.util.config import Config
@@ -121,7 +122,12 @@ class KeyManagementService:
         data = json.dumps({
             "certificateSigningRequest": base64.b64encode(csr.public_bytes(serialization.Encoding.PEM)).decode()
         })
-        resp = requests.post(url, data=data, headers=headers)
+        #resp = requests.post(url, data=data, headers=headers)
+        resp = requests.post(url, data=data, headers=headers, verify=False)
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+        print("Fulcio status:", resp.status_code)
+        print("Fulcio response:", resp.text)
         resp.raise_for_status()
         try:
             certs = resp.json()["signedCertificateEmbeddedSct"]["chain"]["certificates"]
@@ -140,6 +146,24 @@ def generate_ephemeral_key_and_cert(kms, id_token, identity):
         format = serialization.PrivateFormat.PKCS8,
         encryption_algorithm = serialization.NoEncryption()
     ).decode("utf-8")
+    print("id_token starts:", id_token[:30])
+    print("id_token dots:", id_token.count("."))
+
+    claims = jwt.decode(id_token, options={"verify_signature": False})
+    print("OIDC claims:", claims)
+    print("now:", int(time.time()))
+    print("exp:", claims.get("exp"))
+    print("aud:", claims.get("aud"))
+    print("iss:", claims.get("iss"))
+    print("sub:", claims.get("sub"))
+    claims = jwt.decode(id_token, options={"verify_signature": False})
+    now = int(time.time())
+
+    if claims.get("exp") is not None and claims["exp"] <= now:
+        raise ValueError(
+            f"OIDC token expired: exp={claims['exp']}, now={now}. "
+            "Generate a fresh GitHub OIDC token before requesting a Fulcio cert."
+        )
     cert = kms.get_fulcio_cert(id_token, identity, priv_key)
     return priv_key_pem, cert
 

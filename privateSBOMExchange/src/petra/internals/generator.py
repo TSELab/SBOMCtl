@@ -38,7 +38,8 @@ class Generator:
         sbom = SBOM_parser.sbom
         sbom_tree = build_sbom_tree(sbom,time_tree_clause,self.policy)
         plaintext_sbom_tree = copy.deepcopy(sbom_tree)
-
+        first_merkle_pass = MerkleVisitor()
+        plaintext_sbom_tree.accept(first_merkle_pass)
         # request keys(cpabe_pk, (counter)signing key pair and cert) from KMS
         self.get_generator_keys()
 
