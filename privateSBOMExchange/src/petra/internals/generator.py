@@ -1,4 +1,5 @@
 import copy
+import pickle
 from typing import List
 from lib4sbom.parser import SBOMParser
 import requests
@@ -15,11 +16,24 @@ class Generator:
         self.kms_url = kms_conf.get_kms_service_url()
         self.sw_artifact = sw_artifact
         self.policy = policy
-        self.cpabe_pk = ""
-        self.signing_key = ""
-        self.cert = ""
+        self.cpabe_pk = "" ##
+        self.signing_key = ""##
+        self.cert = ""##
         self.epoch_info:Dict = epoch_info
-    
+
+    def save_keys(self, out_dir="keys"):
+
+        with open("gen_cpabe_pk.pkl", "wb") as f:
+            pickle.dump(self.cpabe_pk, f)
+
+        with open("gen_signing_key.pkl", "wb") as f:
+            pickle.dump(self.signing_key, f)
+
+        with open("gen_signing_cert.pkl", "wb") as f:
+            pickle.dump(self.cert, f)
+
+
+
     def get_generator_keys(self):
         response = requests.post(f"{self.kms_url}/provision-generator-keys")
         if response.status_code != 200:
@@ -28,6 +42,7 @@ class Generator:
         if not all([cpabe_pk, signing_key, cert]):
             raise Exception("Failed to get signing key or certificate from KMS")
         self.cpabe_pk, self.signing_key, self.cert = cpabe_pk, signing_key, cert
+        self.save_keys()
 
     def redact_sbom(self):
         time_tree_clause: str =self.make_time_access_tree()
@@ -38,8 +53,8 @@ class Generator:
         sbom = SBOM_parser.sbom
         sbom_tree = build_sbom_tree(sbom,time_tree_clause,self.policy)
         plaintext_sbom_tree = copy.deepcopy(sbom_tree)
-        first_merkle_pass = MerkleVisitor()
-        plaintext_sbom_tree.accept(first_merkle_pass)
+        #first_merkle_pass = MerkleVisitor()
+        #plaintext_sbom_tree.accept(first_merkle_pass)
         # request keys(cpabe_pk, (counter)signing key pair and cert) from KMS
         self.get_generator_keys()
 

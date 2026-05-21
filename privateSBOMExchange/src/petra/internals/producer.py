@@ -1,4 +1,5 @@
 import copy
+import pickle
 import requests
 from petra.models import DecryptVisitor
 from petra.util.config import Config
@@ -17,14 +18,15 @@ class Producer:
         self.redacted_sbom_tree = None
         self.signed_redacted_sbom_tree = None
         self.decrypted_sbom_tree = None
-        self.cpabe_sk = ""
-        self.generator_cert = ""
-        self.signing_cert = ""
+        self.cpabe_sk = "" ##
+        self.generator_cert = "" ##
+        self.signing_cert = "" ##
         self.epoch_info = {}
 
     def request_redaction(self):
         # get producer keys(cpabe_sk, counter signing_key, cert)
         self.get_producer_keys()
+
         # call generator to redact the SBOM, send the epoch info returned by the kms
         generator = Generator(self.sw_artifact, self.policy,self.epoch_info)
         self.plaintext_sbom_tree, self.redacted_sbom_tree, signing_cert = generator.redact_sbom()
@@ -37,6 +39,16 @@ class Producer:
 
         # countersign the redacted SBOM
         self.signed_redacted_sbom_tree = sign_sbom_tree(self.signing_key, self.redacted_sbom_tree)
+    def save_keys(self, out_dir="keys"):
+
+        with open("prod_cpabe_sk.pkl", "wb") as f:
+            pickle.dump(self.cpabe_sk, f)
+
+        with open("prod_signing_key.pkl", "wb") as f:
+            pickle.dump(self.signing_key, f)
+
+        with open("prod_signing_cert.pkl", "wb") as f:
+            pickle.dump(self.signing_cert, f)
 
     def get_producer_keys(self):
         resp = requests.post(f"{self.kms_url}/provision-producer-keys")
@@ -46,6 +58,7 @@ class Producer:
         if not all([cpabe_sk, signing_key, cert,epoch_info]):
             raise Exception("Failed to get cpabe_sk, signing key, certificate or epoch info from KMS")
         self.cpabe_sk, self.signing_key, self.signing_cert,self.epoch_info = cpabe_sk, signing_key, cert,epoch_info
+        self.save_keys()
 
     def decrypt_sbom(self):
         decrypt_visitor = DecryptVisitor(self.cpabe_sk)

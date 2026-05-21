@@ -1,4 +1,5 @@
 import copy
+import pickle
 import time
 import requests
 from petra.models import DecryptVisitor
@@ -13,6 +14,7 @@ class Consumer:
         self.redacted_sbom_tree = redacted_sbom_tree
         self.key_expiry:int = 0
         self.cpabe_sk = self.enroll_decryption_key()
+        self.save_keys()
         self.decrypted_sbom_tree = None
 
     def enroll_decryption_key(self):
@@ -21,6 +23,13 @@ class Consumer:
             raise Exception(f"Failed to get cpabe secret key: {response.text}")
         self.key_expiry = response.json().get("expires")
         return response.json().get("cpabe_pk")
+    
+    def save_keys(self, out_dir="keys"):
+
+        with open( "consumer_key_expiry", "wb") as f:
+            pickle.dump(self.key_expiry, f)
+        with open("consumer_cpabe_sk.pkl", "wb") as f:
+            pickle.dump(self.cpabe_sk, f)
 
     def decrypt_sbom(self):
         #check if key is expired already

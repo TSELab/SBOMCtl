@@ -22,24 +22,31 @@ TYPE_STYLE = {
 }
 
 def short_hash(h):
-    return h[:7] if h else "nohash"
+    return h[:7] if h else "None"
 
+def short_policy(h):
+    return h[:104] if h else "None"
+
+#  in sbomnode plaintext_hash
+# in complex plaintext_commit plaintext_hash
+#in field plaintext_commit
 def node_label(node):
     t = node.get("t")
 
     if t == "S":
-        return f"SBOM\npurl: {node.get('purl', '')}\nhash: {short_hash(node.get('hash'))}"
+        return f"SBOM\npurl: {node.get('purl', '')}\nhash: {short_hash(node.get('hash'))}\n policy: {short_policy(node.get('policy'))}\n commitment: {short_hash(node.get('plaintext_hash'))}"
 
     if t == "C":
-        return f"{node.get('type', '')}\nhash: {short_hash(node.get('hash'))}"
+        return f"{node.get('type', '')}\nhash: {short_hash(node.get('hash'))}\n policy: {short_policy(node.get('policy'))}\n commitment: {short_hash(node.get('plaintext_commit')[1])}"
 
     if t == "F":
         return (
             f"{field_display_value(node)}\n"
-            f"hash: {short_hash(node.get('hash'))}"
+            f"hash: {short_hash(node.get('hash'))}\n policy: {short_policy(node.get('policy'))}\n commitment: {short_hash(node.get('plaintext_commit')[1])}"
         )
 
     return str(node)
+
 
 def draw_serialized_tree(tree, output_path="sbom_tree"):
     dot = Digraph("SBOMTree", format="png")
@@ -84,8 +91,7 @@ def field_display_value(node: dict) -> str:
 
     return f"{node.get('name', '')}: {node.get('value', '')}"
 
-# read in the IP policy config
-conf = Config("./config/ip-policy.conf")
+
 
 # get the SBOM file and policy
 sbom_file = "nats.json"
@@ -97,13 +103,13 @@ producer.request_redaction()
 
 graph = draw_serialized_tree(serialize_tree(producer.plaintext_sbom_tree))
 graph.render("plaintext sbom tree", format="svg", view=True)
-input(f" showing plaintext tree, close it, then press Enter for next tree...")
+input(f" showing plaintext tree, close it, then press Enter for next tree...\n")
 
 # Distributor verifies producer's signature on redacted SBOM
 redacted_sbom, producer_cert = producer.to_distributor()
 graph = draw_serialized_tree(serialize_tree(redacted_sbom))
 graph.render("redacted sbom tree", format="svg", view=True)
-input(f" showing redacted tree, close it, then press Enter for next tree...")
+input(f" showing redacted tree, close it, then press Enter for next tree...\n")
 
 distributor = Distributor(redacted_sbom, producer_cert)
 
@@ -112,10 +118,10 @@ consumer = Consumer(sbom_file, redacted_sbom)
 consumer.decrypt_sbom()
 graph = draw_serialized_tree(serialize_tree(consumer.decrypted_sbom_tree))
 graph.render("decrypted sbom tree", format="svg", view=True)
-input(f" showing decrypted tree, close it, then press Enter for next tree...")
+input(f" showing decrypted tree, close it, then press Enter for next tree...\n")
 
 
-print("decrypted tree signature verification passed")
+print("decrypted tree signature verification passed\n\n")
 
 # Consumer verifies the sameness of the redacted and decrypted SBOM trees
 passed = verify_sameness(redacted_sbom, consumer.decrypted_sbom_tree)
