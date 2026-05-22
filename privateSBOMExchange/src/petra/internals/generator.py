@@ -32,6 +32,17 @@ class Generator:
         with open("gen_signing_cert.pkl", "wb") as f:
             pickle.dump(self.cert, f)
 
+    def load_keys(self):
+
+
+        with open("key/gen_cpabe_pk.pkl", "rb") as f:
+            self.cpabe_pk = pickle.load(f)
+
+        with open("key/gen_signing_key.pkl", "rb") as f:
+            self.signing_key = pickle.load(f)
+
+        with open("key/gen_signing_cert.pkl", "rb") as f:
+            self.cert = pickle.load(f)
 
 
     def get_generator_keys(self):
@@ -56,8 +67,8 @@ class Generator:
         #first_merkle_pass = MerkleVisitor()
         #plaintext_sbom_tree.accept(first_merkle_pass)
         # request keys(cpabe_pk, (counter)signing key pair and cert) from KMS
-        self.get_generator_keys()
-
+        #self.get_generator_keys()
+        self.load_keys()
         # encrypt node data
         encrypt_visitor = EncryptVisitor(self.cpabe_pk)
         sbom_tree.accept(encrypt_visitor)
@@ -75,8 +86,10 @@ class Generator:
         """
         Return a list of epoch end timestamps starting from the current epoch
         """
-        period_sec = int(self.epoch_info ["epoch_period_seconds"])
-        start = int(self.epoch_info["epoch_end_time_stamp"])
+        #period_sec = int(self.epoch_info ["epoch_period_seconds"])
+        period_sec=24*30*3600
+        #start = int(self.epoch_info["epoch_end_time_stamp"])
+        start= 1780704000
         return [f"\"epoch:{start + i * period_sec}\"" for i in range(count)]
 
     def make_time_access_tree(self) -> str:

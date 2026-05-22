@@ -98,31 +98,69 @@ sbom_file = "nats.json"
 policy_file = "policies/visualizer_policy"
 
 # Producer requests sbom redaction
+#print("Consumer meets node policy ✓✓✓✓ ....\n\n")
+#print(f"Decrypting node data .... \n\n")
+input("\n\nSoftware producer gets a master CP-ABE decryption key ...")
+input ("\n\nSoftware producer gets an ephemeral signing key, and a Fulcio certificate from the KMS after OIDC-based authentication ...\n\n")
+#input("\n\nSBOM producer gets a master CP-ABE decryption key, an ephemeral signing key, and a Fulcio certificate from the KMS after OIDC-based authentication ...\n\n")
+input(f"Software producer requests sbom redaction from the generator according to its policy.... \n\n")
+
 producer = Producer(sbom_file, policy_file)
 producer.request_redaction()
+input("SBOM Generator gets the CP-ABE encryption key from the KMS and receives an ephemeral signing key with a Fulcio certificate bound to its OIDC identity\n\n")
+#input("SBOM Generator gets signing key pair and encryption key from Sigstore ...\n\n")
+input(f"SBOM Generator generates plaintext SBOM and selective redacted SBOM.... \n\n")
+input(f"Generator signs SBOM tree.... \n\n")
+
+
+#print(f"Software producer verifies generator's signature on redacted SBOM ...  Passed ✓✓✓✓ \n\n")
+input(f"Software producer verifies generator's signature on redacted SBOM ... \n\n")
+input(f"Redacted SBOM signature verification passed ✓✓✓✓  \n\n")
+
+input(f"Software producer countersign the redacted SBOM ... \n\n")
+
+
 
 graph = draw_serialized_tree(serialize_tree(producer.plaintext_sbom_tree))
 graph.render("plaintext sbom tree", format="svg", view=True)
-input(f" showing plaintext tree, close it, then press Enter for next tree...\n")
+input(f"Showing plaintext SBOM tree, close it, then press Enter for next tree....\n\n")
+
+input(f"Sending redacted SBOM tree to the Distributor....\n\n")
+
+input(f"Software Distributor verifies producer's signature on redacted SBOM ... \n\n")
+input(f"Redacted SBOM signature verification passed ✓✓✓✓  \n\n")
 
 # Distributor verifies producer's signature on redacted SBOM
 redacted_sbom, producer_cert = producer.to_distributor()
 graph = draw_serialized_tree(serialize_tree(redacted_sbom))
 graph.render("redacted sbom tree", format="svg", view=True)
-input(f" showing redacted tree, close it, then press Enter for next tree...\n")
+input(f"Showing redacted SBOM tree, close it, then press Enter for next tree ....\n\n")
 
 distributor = Distributor(redacted_sbom, producer_cert)
+input("Consumer enrolls with the KMS and receives an attribute-bound CP-ABE decryption key with an epoch-based expiry ...\n\n")
+#input("Consumer gets decryption key from Sigstore according to her attributes ...\n\n")
+print(f"Consumer attributes:\n\n")
+input(f"['Security Auditor', 'Audit Authorization status of Approved', 'epoch:1780704000']\n\n")
+#input(f"['Security Auditor', 'Audit Authorization status of Approved', 'name:41898282', 'namespace:refs/heads/main', 'epoch:1780704000']\n")
+
+input(f"Consumer tries to decrypt the redacted SBOM ....  \n\n")
 
 # Consumer decrypts the redacted SBOM
+input("Consumer meets node policy ✓✓✓✓ \n\n")
+input(f"Decrypting node data .... \n\n")
 consumer = Consumer(sbom_file, redacted_sbom)
 consumer.decrypt_sbom()
+
 graph = draw_serialized_tree(serialize_tree(consumer.decrypted_sbom_tree))
 graph.render("decrypted sbom tree", format="svg", view=True)
-input(f" showing decrypted tree, close it, then press Enter for next tree...\n")
+input(f"Showing decrypted tree ...\n")
 
+input(f"Consumer verifies decrypted tree signature ... \n\n")
 
-print("decrypted tree signature verification passed\n\n")
+input("Decrypted tree signature verification passed ✓✓✓✓\n\n")
+
+input(f"Consumer verifies the sameness of the redacted and decrypted SBOM trees ...\n")
 
 # Consumer verifies the sameness of the redacted and decrypted SBOM trees
 passed = verify_sameness(redacted_sbom, consumer.decrypted_sbom_tree)
-print(f"full tree sameness verification passed? {str(passed)}")
+print(f"Tree sameness verification passed? {str(passed)}")

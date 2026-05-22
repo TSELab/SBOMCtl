@@ -7,6 +7,8 @@ from petra.internals.generator import Generator
 from cryptography import x509
 from petra.internals.common.common import sign_sbom_tree, verify_sbom_tree_signature
 
+
+
 kms_conf = Config("./config/kms_and_attribute-namespace.conf")
 
 class Producer:
@@ -25,8 +27,8 @@ class Producer:
 
     def request_redaction(self):
         # get producer keys(cpabe_sk, counter signing_key, cert)
-        self.get_producer_keys()
-
+        #self.get_producer_keys()
+        self.load_keys()
         # call generator to redact the SBOM, send the epoch info returned by the kms
         generator = Generator(self.sw_artifact, self.policy,self.epoch_info)
         self.plaintext_sbom_tree, self.redacted_sbom_tree, signing_cert = generator.redact_sbom()
@@ -49,6 +51,19 @@ class Producer:
 
         with open("prod_signing_cert.pkl", "wb") as f:
             pickle.dump(self.signing_cert, f)
+
+
+    def load_keys(self):
+
+        with open("key/prod_cpabe_sk.pkl", "rb") as f:
+            self.cpabe_sk = pickle.load(f)
+
+        with open("key/prod_signing_key.pkl", "rb") as f:
+            self.signing_key = pickle.load(f)
+
+        with open("key/prod_signing_cert.pkl", "rb") as f:
+            self.signing_cert = pickle.load(f)
+
 
     def get_producer_keys(self):
         resp = requests.post(f"{self.kms_url}/provision-producer-keys")

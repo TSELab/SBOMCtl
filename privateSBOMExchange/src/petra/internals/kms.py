@@ -205,6 +205,10 @@ def provision_producer_keys():
     sk = kms.generate_secret_key(attributes)
     priv_key_pem, cert = generate_ephemeral_key_and_cert(kms, id_token, identity)
 
+    with open("epoch_file", "w") as f:
+        json.dump(epoch_info, f, indent=2)
+
+
     return jsonify({
         "cpabe_sk": sk,
         "signing_key": priv_key_pem, 

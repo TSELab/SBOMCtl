@@ -13,8 +13,9 @@ class Consumer:
         self.sw_artifact = sw_artifact
         self.redacted_sbom_tree = redacted_sbom_tree
         self.key_expiry:int = 0
-        self.cpabe_sk = self.enroll_decryption_key()
-        self.save_keys()
+        #self.cpabe_sk = self.enroll_decryption_key()
+        #self.save_keys()
+        self.load_keys()
         self.decrypted_sbom_tree = None
 
     def enroll_decryption_key(self):
@@ -30,6 +31,17 @@ class Consumer:
             pickle.dump(self.key_expiry, f)
         with open("consumer_cpabe_sk.pkl", "wb") as f:
             pickle.dump(self.cpabe_sk, f)
+
+    def load_keys(self):
+
+        with open("key/consumer_cpabe_sk.pkl", "rb") as f:
+            self.cpabe_sk = pickle.load(f)
+
+        with open("key/consumer_key_expiry", "rb") as f:
+            self.key_expiry = pickle.load(f)
+
+ 
+
 
     def decrypt_sbom(self):
         #check if key is expired already

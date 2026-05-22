@@ -309,10 +309,12 @@ class ComplexNode(Node):
             node_dict['decrypted_data'] = self.decrypted_data.hex()
 
         children = dict()
-        for c in self.children:
-            if c.hash:
-                children[c.hash.hex()[:7]] = c.to_dict()
-
+        #for c in self.children:
+        #    if c.hash:
+        #        children[c.hash.hex()[:7]] = c.to_dict()
+        for i, c in enumerate(self.children):
+            key = c.hash.hex()[:7] if c.hash else f"unhashed-child-{i}"
+            children[key] = c.to_dict()
         node_dict['children'] = children
 
         return node_dict
@@ -461,10 +463,13 @@ class SbomNode(Node):
             node_dict['signature'] = ""
 
         children = dict()
-        for c in self.children:
-            if c.hash:
-                children[c.hash.hex()[:7]] = c.to_dict()
+        #for c in self.children:
+        #    if c.hash:
+        #        children[c.hash.hex()[:7]] = c.to_dict()
 
+        for i, c in enumerate(self.children):
+            key = c.hash.hex()[:7] if c.hash else f"unhashed-child-{i}"
+            children[key] = c.to_dict()
         node_dict['children'] = children
 
         return node_dict
@@ -688,9 +693,8 @@ class DecryptVisitor:
                 node.decrypted_data = decrypt_data_AES(node.encrypted_data, self.__decrypted_aes_keys[node.policy])
                 
                 # debug
-                print(f"Node policy: {node.policy}\n\n")
-                print("Consumer meets node policy ✓✓✓✓ ....\n\n")
-                print(f"Decrypting node data .... {node.decrypted_data[32:]}\n\n")
+                #print(f"Node policy: {node.policy}\n\n")
+                #print(f"Decrypting node data .... {node.decrypted_data[32:]}\n\n")
 
 
             except Exception as e:
