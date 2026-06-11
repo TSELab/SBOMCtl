@@ -135,7 +135,7 @@ After the setup, you should be able to run the Petra CLI by running the test fil
 For example:
 
 ```bash
-python tests/test_models.py
+python -m unittest tests/test_models.py
 ```
 
 Should showcase an encryption and selective decription of target sbom --- make

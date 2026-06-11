@@ -1,20 +1,18 @@
+import unittest
+
 from petra.crypto import Commitment
 
-print("Creating commitment for byte string 0xdecafbad")
 
-commit = Commitment(b'decafbad')
-hexc = commit.to_hex()
+class TestComitment(unittest.TestCase):
+    def test_end_to_end_commitment(self):
 
-print("Got commitment: (%s, %s)" % (hexc[0], hexc[1]))
+        commit = Commitment(b"decafbad")
+        hexc = commit.to_hex()
 
-print("Verification passed? %s" % str(commit.verify(commit.salt, b'decafbad')))
+        self.assertTrue(commit.verify(commit.salt, b"decafbad"))
 
-print("Testing verification of bad commitment opening 0xdeadbeef")
+        self.assertFalse(commit.verify(commit.salt, b"deadbeef"))
 
-print("Verification passed? %s" % str(commit.verify(commit.salt, b'deadbeef')))
+        recon_commit = Commitment.from_hex(hexc)
 
-print("Testing commitment reconstruction from hex tuple")
-
-recon_commit = Commitment.from_hex(hexc)
-
-print("Verification passed? %s" % str(recon_commit.verify(recon_commit.salt, b'decafbad')))
+        self.assertTrue(recon_commit.verify(recon_commit.salt, b"decafbad"))
